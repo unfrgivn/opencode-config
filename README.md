@@ -493,6 +493,8 @@ Check the [releases](https://github.com/unfrgivn/opencode-config/releases) for a
 - Skills: `~/.config/opencode/skill/_plugins/opencode-config/`
 - MCPs: `~/.config/opencode/mcp/_plugins/opencode-config/`
 
+Each generated install directory contains its own `.gitignore` so generated content stays out of version control.
+
 ## Troubleshooting
 
 Quick fixes for common issues:

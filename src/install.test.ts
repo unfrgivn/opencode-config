@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from "bun:test"
 import * as fs from "fs"
 import * as path from "path"
 import * as os from "os"
+import { execFileSync } from "node:child_process"
 import {
   getInstallPath,
   getSymlinkPath,
@@ -9,16 +10,22 @@ import {
   createSkillSymlink,
   createSymlinksForRepo,
   getExistingSymlinks,
+  getExistingInstallsForRepo,
   cleanupStaleInstalls,
+  cleanupStaleInstallsForRepo,
   cleanupStaleSymlinks,
   materializeSchema,
   getSkillMetadataPath,
   getStagedSkillUpdatePath,
+  ignoreGeneratedInstallDirs,
+  getPluginsPath,
   type InstallMethod,
   type InstallResult,
 } from "./install"
 import type { SkillInfo, DiscoveryResult } from "./assets"
 import { setRsyncAvailable } from "./copy"
+import { cleanupStaleMcpInstallsForRepo, getExistingMcpInstallsForRepo, getMcpPluginsRootDir } from "./mcp-install"
+import { opencodeConfigDir } from "./paths"
 
 describe("install", () => {
   // Use temp directories for testing
@@ -78,6 +85,109 @@ describe("install", () => {
 
     test("getSymlinkPath is an alias for getInstallPath", () => {
       expect(getSymlinkPath).toBe(getInstallPath)
+    })
+  })
+
+  describe("ignoreGeneratedInstallDirs", () => {
+    beforeEach(() => {
+      for (const installDir of [getPluginsPath(), getMcpPluginsRootDir()]) {
+        if (fs.existsSync(installDir)) fs.rmSync(installDir, { recursive: true, force: true })
+      }
+    })
+
+    test("writes an ignore file with the generated-content rule to both install directories", () => {
+      // Arrange
+      const expectedContent = "# Created by @unfrgivn/opencode-config. Everything in this folder is generated.\n*\n"
+
+      // Act
+      const writtenFiles = ignoreGeneratedInstallDirs()
+
+      // Assert
+      expect(writtenFiles).toHaveLength(2)
+      expect(fs.readFileSync(path.join(getPluginsPath(), ".gitignore"), "utf-8")).toBe(expectedContent)
+      expect(fs.readFileSync(path.join(getMcpPluginsRootDir(), ".gitignore"), "utf-8")).toBe(expectedContent)
+      expect(writtenFiles).toContain(path.join(getPluginsPath(), ".gitignore"))
+      expect(writtenFiles).toContain(path.join(getMcpPluginsRootDir(), ".gitignore"))
+    })
+
+    test("does not rewrite identical ignore files", () => {
+      // Arrange
+      ignoreGeneratedInstallDirs()
+      const ignoreFile = path.join(getPluginsPath(), ".gitignore")
+      const originalModifiedAt = fs.statSync(ignoreFile).mtimeMs
+
+      // Act
+      const writtenFiles = ignoreGeneratedInstallDirs()
+
+      // Assert
+      expect(writtenFiles).toEqual([])
+      expect(fs.statSync(ignoreFile).mtimeMs).toBe(originalModifiedAt)
+    })
+
+    test("replaces an ignore file whose content differs", () => {
+      // Arrange
+      ignoreGeneratedInstallDirs()
+      const ignoreFile = path.join(getPluginsPath(), ".gitignore")
+      fs.writeFileSync(ignoreFile, "old rule\n")
+
+      // Act
+      const writtenFiles = ignoreGeneratedInstallDirs()
+
+      // Assert
+      expect(writtenFiles).toContain(ignoreFile)
+      expect(fs.readFileSync(ignoreFile, "utf-8")).toBe("# Created by @unfrgivn/opencode-config. Everything in this folder is generated.\n*\n")
+    })
+
+    test("scanners and cleanup leave the in-folder ignore files alone", () => {
+      // Arrange
+      ignoreGeneratedInstallDirs()
+      const skillSource = createTestSkillDir("scanned-skill")
+      const skillTarget = getInstallPath("scanner-repo", "scanned-skill")
+      fs.mkdirSync(path.dirname(skillTarget), { recursive: true })
+      fs.symlinkSync(skillSource, skillTarget, "dir")
+      const mcpDir = fs.mkdtempSync(path.join(os.tmpdir(), "test-mcp-"))
+      const mcpTarget = path.join(mcpDir, "_plugins", "scanner-repo", "scanner.json")
+      fs.mkdirSync(path.dirname(mcpTarget), { recursive: true })
+      fs.writeFileSync(mcpTarget, "{}")
+      fs.writeFileSync(path.join(mcpDir, "_plugins", ".gitignore"), "generated\n")
+
+      // Act
+      const skillInstalls = getExistingInstallsForRepo("scanner-repo")
+      const mcpInstalls = getExistingMcpInstallsForRepo("scanner-repo", mcpDir)
+      cleanupStaleInstallsForRepo("scanner-repo", new Set())
+      cleanupStaleMcpInstallsForRepo("scanner-repo", new Set(), mcpDir)
+
+      // Assert
+      expect([...skillInstalls.keys()]).toEqual(["scanner-repo/scanned-skill"])
+      expect([...mcpInstalls]).toEqual(["scanner.json"])
+      expect(fs.existsSync(path.join(getPluginsPath(), ".gitignore"))).toBe(true)
+      expect(fs.existsSync(path.join(mcpDir, "_plugins", ".gitignore"))).toBe(true)
+      fs.rmSync(mcpDir, { recursive: true, force: true })
+    })
+
+    test("keeps generated installs ignored in a real git repository", () => {
+      // Arrange
+      const configDir = opencodeConfigDir()
+      const home = path.dirname(path.dirname(configDir))
+      execFileSync("git", ["init", "-q", home])
+      fs.writeFileSync(path.join(home, "control.txt"), "control")
+      ignoreGeneratedInstallDirs()
+      const skillTarget = getInstallPath("git-repo", "git-skill")
+      fs.mkdirSync(path.dirname(skillTarget), { recursive: true })
+      fs.writeFileSync(path.join(path.dirname(skillTarget), "source.md"), "source")
+      fs.symlinkSync(path.join(path.dirname(skillTarget), "source.md"), skillTarget)
+      const mcpTarget = path.join(getMcpPluginsRootDir(), "git-repo", "git-mcp.json")
+      fs.mkdirSync(path.dirname(mcpTarget), { recursive: true })
+      fs.writeFileSync(mcpTarget, "{}")
+
+      // Act
+      const status = execFileSync("git", ["-C", home, "status", "--porcelain", "--untracked-files=all"], { encoding: "utf-8" })
+
+      // Assert
+      expect(status).toContain("control.txt")
+      expect(status).not.toContain("skill/_plugins")
+      expect(status).not.toContain("mcp/_plugins")
+      fs.rmSync(path.join(home, ".git"), { recursive: true, force: true })
     })
   })
 
