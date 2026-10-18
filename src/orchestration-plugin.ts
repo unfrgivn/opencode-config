@@ -1088,9 +1088,16 @@ function isLikelyTaskFailure(output: string): boolean {
   return false
 }
 
+/** Runs one tmux command. Tests inject a fake; production shells out to the tmux binary. */
+export type TmuxCommandRunner = (args: string[]) => { status: number | null; stdout?: string; stderr?: string }
+
+const spawnTmux: TmuxCommandRunner = (args) =>
+  spawnSync("tmux", args, { encoding: "utf-8", timeout: TMUX_TIMEOUT_MS })
+
+let runTmuxCommand: TmuxCommandRunner = spawnTmux
+
 function hasTmuxBinary(): boolean {
-  const probe = spawnSync("tmux", ["-V"], { encoding: "utf-8", timeout: TMUX_TIMEOUT_MS })
-  return probe.status === 0
+  return runTmuxCommand(["-V"]).status === 0
 }
 
 function isInsideTmux(): boolean {
@@ -1098,7 +1105,7 @@ function isInsideTmux(): boolean {
 }
 
 function runTmux(args: string[]): { ok: boolean; stdout: string; stderr: string } {
-  const result = spawnSync("tmux", args, { encoding: "utf-8", timeout: TMUX_TIMEOUT_MS })
+  const result = runTmuxCommand(args)
   return {
     ok: result.status === 0,
     stdout: result.stdout ?? "",
@@ -1900,7 +1907,8 @@ async function handleToolAfter(
   return `${output}\n[Subagent activity] ${record.status.toUpperCase()} ${record.agent} "${record.title}"`
 }
 
-export async function FellowshipOrchestrationPluginHooks() {
+export async function FellowshipOrchestrationPluginHooks(options: { runTmuxCommand?: TmuxCommandRunner } = {}) {
+  runTmuxCommand = options.runTmuxCommand ?? spawnTmux
   await recoverPersistedTasks(parseConfigFromFile().config)
 
   return {

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test"
+import { describe, test, expect, beforeEach, afterEach } from "bun:test"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -96,13 +96,13 @@ function createNoTmuxBinarySpawnMock(): (cmd: string, args: string[]) => SpawnRe
   }
 }
 
-async function loadPluginWithMock(spawnSyncImpl: (cmd: string, args: string[]) => SpawnResult) {
-  mock.module("node:child_process", () => ({
-    spawnSync: spawnSyncImpl,
-  }))
+// Injects the fake through the hooks factory instead of stubbing node:child_process.
+// Bun module mocks are process-wide, so every test file loaded afterwards would see
+// the stub and lose execFile/spawn.
+async function loadPluginWithFakeTmux(fakeTmux: (cmd: string, args: string[]) => SpawnResult) {
   const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const mod = await import(`./orchestration-plugin.ts?test=${unique}`)
-  return mod.FellowshipOrchestrationPluginHooks
+  const mod: typeof import("./orchestration-plugin") = await import(`./orchestration-plugin.ts?test=${unique}`)
+  return () => mod.FellowshipOrchestrationPluginHooks({ runTmuxCommand: (args) => fakeTmux("tmux", args) })
 }
 
 describe("fellowship-orchestration tmux runtime", () => {
@@ -137,7 +137,6 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   afterEach(() => {
-    mock.restore()
     process.chdir(originalCwd)
     if (originalHome === undefined) {
       delete process.env.HOME
@@ -158,7 +157,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("creates dedicated tmux session and window for first task", async () => {
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -183,7 +182,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("creates multiple windows in same session for concurrent tasks", async () => {
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -221,7 +220,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
     const commandLog: string[][] = []
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock({ commandLog }))
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock({ commandLog }))
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -245,7 +244,7 @@ describe("fellowship-orchestration tmux runtime", () => {
 
   test("attaches tmux task panes to the authoritative child session", async () => {
     const commandLog: string[][] = []
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock({ commandLog }))
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock({ commandLog }))
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -265,7 +264,7 @@ describe("fellowship-orchestration tmux runtime", () => {
 
   test("marks attached window as failed when reconciliation detects missing window", async () => {
     const missingWindowIDs = new Set<string>(["@1"])
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock({ missingWindowIDs }))
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock({ missingWindowIDs }))
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -314,7 +313,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       tmuxState: "attached",
     }]))
     const commandLog: string[][] = []
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock({ commandLog }))
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock({ commandLog }))
     const plugin = await pluginFactory()
 
     await plugin.tool.fellowship_orchestration.execute(
@@ -326,7 +325,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("stop cleans up windows and destroys agent session", async () => {
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -356,7 +355,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("disables tmux task state and warns once when tmux binary is missing", async () => {
-    const pluginFactory = await loadPluginWithMock(createNoTmuxBinarySpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createNoTmuxBinarySpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -390,7 +389,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -425,7 +424,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         },
       }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     for (let index = 1; index <= 9; index += 1) {
@@ -464,9 +463,9 @@ describe("fellowship-orchestration tmux runtime", () => {
         },
       }),
     )
-    const firstFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const firstFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const first = await firstFactory()
-    const secondFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const secondFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const second = await secondFactory()
 
     await first["tool.execute.before"](
@@ -493,9 +492,9 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 1 }, tmux: { enabled: false } } }),
     )
-    const firstFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const firstFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const first = await firstFactory()
-    const secondFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const secondFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const second = await secondFactory()
 
     const results = await Promise.allSettled([
@@ -524,7 +523,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     fs.mkdirSync(lockDir, { recursive: true })
     const stale = new Date(Date.now() - 60_000)
     fs.utimesSync(lockDir, stale, stale)
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -542,7 +541,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     fs.writeFileSync(path.join(lockDir, "owner.json"), "not-json")
     const stale = new Date(Date.now() - 60_000)
     fs.utimesSync(lockDir, stale, stale)
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -557,7 +556,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     const lockDir = path.join(tempDir, ".cache", "opencode", "fellowship", "orchestration-admission.lock")
     fs.mkdirSync(lockDir, { recursive: true })
     fs.writeFileSync(path.join(lockDir, "owner.json"), JSON.stringify({ pid: 2_147_483_647 }))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -576,7 +575,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       instanceID: "abandoned",
       createdAt: new Date(Date.now() - 60_000).toISOString(),
     }))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -591,7 +590,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     const lockDir = path.join(tempDir, ".cache", "opencode", "fellowship", "orchestration-admission.lock")
     fs.mkdirSync(lockDir, { recursive: true })
     fs.writeFileSync(path.join(lockDir, "owner.json"), JSON.stringify({ pid: process.pid, instanceID: "active" }))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await expect(plugin.tool.fellowship_orchestration.execute(
@@ -606,7 +605,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     const ownerLeasePath = path.join(cacheDir, "orchestration-owner-leases")
     fs.mkdirSync(cacheDir, { recursive: true })
     fs.writeFileSync(ownerLeasePath, "blocks owner lease directory creation")
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     let protectedOperationError: unknown
@@ -632,9 +631,9 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 1 }, tmux: { enabled: false } } }),
     )
-    const firstFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const firstFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const first = await firstFactory()
-    const secondFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const secondFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const second = await secondFactory()
     await first["tool.execute.before"](
       { tool: "task", sessionID: "sess-release-a", callID: "call-a" },
@@ -668,7 +667,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         },
       }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-provider-a", callID: "call-a" },
@@ -692,7 +691,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         },
       }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-cooldown-a", callID: "call-a" },
@@ -730,7 +729,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         },
       }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-503", callID: "call-503" },
@@ -766,7 +765,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         native: { effectiveMaxConcurrent: 3, cooldownUntil: null, congestionFailures: 0, successfulCompletions: 0 },
       },
     }))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-recovery", callID: "call-recovery" },
@@ -810,7 +809,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         native: { effectiveMaxConcurrent: 3, cooldownUntil: null, congestionFailures: 0, successfulCompletions: 0 },
       },
     }))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -837,7 +836,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         },
       }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-capacity", callID: "call-capacity" },
@@ -858,7 +857,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 4 }, tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -875,7 +874,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 3 }, tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -899,7 +898,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -933,7 +932,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 1 }, tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-structured-bg", callID: "call-structured-bg" },
@@ -966,7 +965,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("parses current XML background launch output when metadata is unavailable", async () => {
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-xml-bg", callID: "call-xml-bg" },
@@ -991,7 +990,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 1 }, tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-synthetic-complete", callID: "call-synthetic-complete" },
@@ -1025,7 +1024,7 @@ describe("fellowship-orchestration tmux runtime", () => {
 
   test("synthetic background error records provider outcome and closes tmux lifecycle", async () => {
     const commandLog: string[][] = []
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock({ commandLog }))
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock({ commandLog }))
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-synthetic-error", callID: "call-synthetic-error" },
@@ -1072,7 +1071,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         tmux: { enabled: false },
       } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-child-error-parent", callID: "call-child-error" },
@@ -1104,7 +1103,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 1 }, tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-child-idle-parent", callID: "call-child-idle" },
@@ -1140,7 +1139,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         tmux: { enabled: false },
       } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-idle-error-parent", callID: "call-idle-error" },
@@ -1178,7 +1177,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("duplicate after and terminal events do not double provider recovery or telemetry", async () => {
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-duplicate-terminal", callID: "call-duplicate-terminal" },
@@ -1225,7 +1224,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 1 }, tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-unrelated-parent", callID: "call-unrelated" },
@@ -1302,7 +1301,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       ]),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const tasksOutput = await plugin.tool.fellowship_orchestration.execute(
@@ -1353,7 +1352,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       tmuxSessionName: null,
       tmuxState: "disabled",
     }]))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -1403,7 +1402,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       tmuxSessionName: null,
       tmuxState: "disabled",
     }]))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -1419,7 +1418,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { taskTimeoutMs: 1000 }, tmux: { enabled: false } } }),
     )
-    const firstFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const firstFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const first = await firstFactory()
     await first["tool.execute.before"](
       { tool: "task", sessionID: "sess-live-timeout", callID: "call-live" },
@@ -1429,7 +1428,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     const records = JSON.parse(fs.readFileSync(taskFile, "utf-8")) as Array<Record<string, unknown>>
     records[0] = { ...records[0], startedAt: "2020-01-01T00:00:00.000Z" }
     fs.writeFileSync(taskFile, JSON.stringify(records))
-    const secondFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const secondFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const second = await secondFactory()
 
     const output = await second.tool.fellowship_orchestration.execute(
@@ -1481,7 +1480,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       ]),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const tasksOutput = await plugin.tool.fellowship_orchestration.execute(
@@ -1529,7 +1528,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       tmuxState: "disabled",
     }]))
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     const output = await plugin.tool.fellowship_orchestration.execute(
       { action: "tasks" },
@@ -1573,7 +1572,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       tmuxState: "attached",
     }]))
     const commandLog: string[][] = []
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock({ commandLog }))
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock({ commandLog }))
 
     await pluginFactory()
 
@@ -1592,7 +1591,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -1629,7 +1628,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       } }),
     )
     const commandLog: string[][] = []
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock({ commandLog }))
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock({ commandLog }))
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-tool-error", callID: "call-error" },
@@ -1676,7 +1675,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 1 }, tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-tool-complete", callID: "call-complete" },
@@ -1711,7 +1710,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { limits: { maxConcurrentGlobal: 1 }, tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-bg-part", callID: "call-bg-part" },
@@ -1746,7 +1745,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("terminal ToolPart correlates internal subtask hook identity by part id", async () => {
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-internal-part", callID: "part-internal" },
@@ -1777,7 +1776,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       path.join(tempDir, ".opencode", "fellowship.json"),
       JSON.stringify({ orchestration: { tmux: { enabled: false } } }),
     )
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
     await plugin["tool.execute.before"](
       { tool: "task", sessionID: "sess-lifecycle", callID: "call-lifecycle" },
@@ -1813,7 +1812,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -1866,7 +1865,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -1888,7 +1887,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("completed task window is cleaned up and agent session destroyed when all done", async () => {
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -1923,7 +1922,7 @@ describe("fellowship-orchestration tmux runtime", () => {
   })
 
   test("agent session persists while some tasks still have windows", async () => {
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -1984,7 +1983,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -2046,7 +2045,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -2080,7 +2079,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin["tool.execute.before"](
@@ -2123,7 +2122,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     await plugin.event({ event: { type: "session.deleted", properties: {} } })
@@ -2177,7 +2176,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       ]),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const tasksOutput = await plugin.tool.fellowship_orchestration.execute(
@@ -2234,7 +2233,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       tmuxSessionName: null,
       tmuxState: "disabled",
     }]))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const output = await plugin.tool.fellowship_orchestration.execute(
@@ -2251,7 +2250,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       "{ this is not valid json at all !!!",
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const diagnostics = await plugin.tool.fellowship_orchestration.execute(
@@ -2279,7 +2278,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const diagnostics = await plugin.tool.fellowship_orchestration.execute(
@@ -2308,7 +2307,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       // The preferred project file overrides only these nested values.
       "orchestration": { "providerMode": "native", "limits": { "maxConcurrent": 1 }, "tmux": { "enabled": false } }
     }`)
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const diagnostics = await plugin.tool.fellowship_orchestration.execute(
@@ -2337,7 +2336,7 @@ describe("fellowship-orchestration tmux runtime", () => {
         focused: { orchestration: { providerMode: "native", limits: { maxConcurrentGlobal: 1 } } },
       },
     }))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const diagnostics = await plugin.tool.fellowship_orchestration.execute(
@@ -2360,7 +2359,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     const stateDir = path.join(tempDir, ".cache", "opencode", "fellowship")
     fs.mkdirSync(stateDir, { recursive: true })
     fs.writeFileSync(path.join(stateDir, "opencode-config.preset-state.json"), JSON.stringify({ version: 1, activePreset: "runtime" }))
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const diagnostics = await plugin.tool.fellowship_orchestration.execute(
@@ -2385,7 +2384,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     fs.mkdirSync(stateDir, { recursive: true })
     fs.writeFileSync(path.join(stateDir, "opencode-config.preset-state.json"), JSON.stringify({ version: 1, activePreset: "runtime" }))
     process.env.FELLOWSHIP_PRESET = "environment"
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const diagnostics = await plugin.tool.fellowship_orchestration.execute(
@@ -2409,7 +2408,7 @@ describe("fellowship-orchestration tmux runtime", () => {
     fs.mkdirSync(stateDir, { recursive: true })
     fs.writeFileSync(path.join(stateDir, "opencode-config.preset-state.json"), JSON.stringify({ version: 1, activePreset: "runtime" }))
     process.env.FELLOWSHIP_PRESET = "missing"
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const diagnostics = await plugin.tool.fellowship_orchestration.execute(
@@ -2460,7 +2459,7 @@ describe("fellowship-orchestration tmux runtime", () => {
       JSON.stringify({ lastLoadTime: "2026-07-08T00:00:00.000Z" }),
     )
 
-    const pluginFactory = await loadPluginWithMock(createTmuxSpawnMock())
+    const pluginFactory = await loadPluginWithFakeTmux(createTmuxSpawnMock())
     const plugin = await pluginFactory()
 
     const diagnostics = await plugin.tool.fellowship_orchestration.execute(

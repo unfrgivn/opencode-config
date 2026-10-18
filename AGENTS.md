@@ -108,6 +108,7 @@ EOF
 - **Run only changed tests**: Use `bun test <file>` during development
 - **Full suite before commit**: Run `bun test` to verify all pass
 - **Sandboxed home**: `bun test` preloads `src/test-preload.ts` (via `bunfig.toml`), which points `HOME` and `XDG_*` at a temp dir. Resolve home, config, cache, and data paths through `src/paths.ts`, never `os.homedir()` directly: Bun's `os.homedir()` ignores the sandbox, so tests would write into the developer's real OpenCode directories.
+- **No module mocks**: Bun's `mock.module` is process-wide. A stub leaks into every test file loaded after it, so results depend on file order, and macOS and Linux order files differently. Inject the dependency instead (see `runTmuxCommand` in `src/orchestration-plugin.ts`).
 
 ## Session Completion
 
