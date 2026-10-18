@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/unfrgivn/opencode-config/compare/v3.0.0...v3.0.1) (2026-10-18)
+
+
+### Miscellaneous Chores
+
+* verify trusted publishing ([5665919](https://github.com/unfrgivn/opencode-config/commit/56659194931b100d227b77cd954664c3aa27a7c9))
+
 ## [3.0.0](https://github.com/unfrgivn/opencode-config/releases/tag/v3.0.0) (2026-10-18)
 
 
