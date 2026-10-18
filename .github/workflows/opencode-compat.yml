@@ -1,0 +1,164 @@
+# OpenCode hands plugins its own `effect` and `@opencode/plugin` at runtime, so
+# an OpenCode release can break this plugin without any change here.
+#   verify: every PR and push boots the OpenCode release matching our SDK pin.
+#   update: daily, moves the pins to the latest release, runs the same checks,
+#           and proposes the result on the deps/opencode-sdk branch.
+name: OpenCode compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "@opencode/plugin version or dist-tag to test"
+        required: true
+        default: latest
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Test
+        run: bun test
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Verify release artifact in OpenCode
+        run: bun run verify:release
+
+  update:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: opencode-sdk-update
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BRANCH: deps/opencode-sdk
+      BOT_NAME: github-actions[bot]
+      BOT_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+      # A PAT makes the pull request trigger the verify job; github.token does not.
+      GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Move the SDK pins to the requested OpenCode release
+        id: bump
+        env:
+          SPEC: ${{ inputs.version || 'latest' }}
+        run: |
+          bun run update:opencode "$SPEC"
+          version=$(jq -r '.dependencies["@opencode/plugin"]' package.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- package.json bun.lock; then
+            echo "main already pins @opencode/plugin@$version"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif git rev-parse --verify --quiet "origin/$BRANCH" > /dev/null \
+            && [ "$(git show "origin/$BRANCH:package.json" | jq -r '.dependencies["@opencode/plugin"]')" = "$version" ]; then
+            echo "$BRANCH already proposes @opencode/plugin@$version"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check compatibility
+        id: checks
+        if: steps.bump.outputs.changed == 'true'
+        continue-on-error: true
+        run: |
+          bun run build
+          bun test
+          bun run typecheck
+          bun run verify:release
+
+      - name: Open or update the pull request
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+          OUTCOME: ${{ steps.checks.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Never overwrite commits pushed to fix a failing bump.
+          if git rev-parse --verify --quiet "origin/$BRANCH" > /dev/null; then
+            ahead=$(git rev-list --count "origin/main..origin/$BRANCH")
+            author=$(git log -1 --format=%ae "origin/$BRANCH")
+            if [ "$ahead" -gt 1 ] || { [ "$ahead" -eq 1 ] && [ "$author" != "$BOT_EMAIL" ]; }; then
+              echo "::warning::$BRANCH has manual commits, so it was not moved to @opencode/plugin@$VERSION"
+              exit 0
+            fi
+          fi
+
+          title="fix(deps): update @opencode/plugin to $VERSION"
+          if [ "$OUTCOME" = success ]; then
+            result="Build, tests, typecheck, and verify:release passed against OpenCode $VERSION."
+          else
+            result="Checks failed against OpenCode $VERSION ($RUN_URL). Push fixes to this branch; the scheduled job leaves branches with manual commits alone."
+          fi
+          command="\`bun run update:opencode\`"
+          body=$(printf 'Moves the OpenCode SDK pins to %s with %s.\n\n%s\n' "$VERSION" "$command" "$result")
+
+          git config user.name "$BOT_NAME"
+          git config user.email "$BOT_EMAIL"
+          git switch --force-create "$BRANCH"
+          git add package.json bun.lock
+          git commit --message "$title"
+          git push --force origin "$BRANCH"
+
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$pr" ]; then
+            if [ "$OUTCOME" = success ]; then
+              gh pr create --base main --head "$BRANCH" --title "$title" --body "$body"
+            else
+              gh pr create --base main --head "$BRANCH" --title "$title" --body "$body" --draft
+            fi
+          else
+            gh pr edit "$pr" --title "$title" --body "$body"
+            draft=$(gh pr view "$pr" --json isDraft --jq .isDraft)
+            if [ "$OUTCOME" = success ] && [ "$draft" = true ]; then gh pr ready "$pr"; fi
+            if [ "$OUTCOME" != success ] && [ "$draft" = false ]; then gh pr ready "$pr" --undo; fi
+          fi
+
+      - name: Fail when the plugin is incompatible
+        if: steps.checks.outcome == 'failure'
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          echo "::error::@unfrgivn/opencode-config does not load in OpenCode $VERSION; see the $BRANCH pull request."
+          exit 1

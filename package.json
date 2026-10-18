@@ -45,6 +45,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "verify:release": "bun scripts/verify-release-artifact.ts",
+    "update:opencode": "bun scripts/update-opencode-sdk.ts",
     "prepublishOnly": "bun run build"
   },
   "keywords": [

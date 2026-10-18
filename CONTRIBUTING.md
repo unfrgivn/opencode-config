@@ -232,6 +232,13 @@ bun test
 - `OPENCODE_VERSION=latest bun run verify:release` tests the current build against a different OpenCode release.
 - `OPENCODE_BIN="$(command -v opencode)" bun run verify:release` uses an installed binary instead of downloading one.
 
+## Keeping Up with OpenCode
+
+The SDK pins in `package.json` (`@opencode/plugin`, `@opentui/core`, `@opentui/solid`, and `solid-js`) move together, and `src/dependency-pins.test.ts` fails if they drift apart.
+
+- `bun run update:opencode [version]` moves them to the latest (or given) OpenCode release and refreshes `bun.lock`.
+- The **OpenCode compatibility** workflow does this daily, runs every check against the matching OpenCode release, and opens or updates the `deps/opencode-sdk` pull request. Incompatible releases open as drafts. Push fixes to that branch; the job will not overwrite it.
+
 ## Pull Request Process
 
 1. Create a feature branch

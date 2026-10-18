@@ -16,6 +16,7 @@ function readStringRecord(parent: Record<string, unknown>, key: string): Record<
   return StringRecordSchema.parse(parent[key])
 }
 
+// `bun run update:opencode` keeps these pins in lockstep; see scripts/update-opencode-sdk.ts.
 describe("OpenCode dependency pins", () => {
   test("pins the plugin SDK exactly so verify:release boots the matching OpenCode release", () => {
     const dependencies = readStringRecord(readPackageJson(), "dependencies")

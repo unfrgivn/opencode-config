@@ -10,6 +10,7 @@ bun run build           # Build plugin (outputs to dist/)
 bun test                # Run all tests
 bun run typecheck       # TypeScript type checking
 bun run verify:release  # Load the packed plugin in the matching OpenCode release (run after dependency changes)
+bun run update:opencode # Move the OpenCode SDK pins to the latest release, in lockstep
 npm link                # Link for local testing
 ```
 

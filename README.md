@@ -467,6 +467,9 @@ bun run typecheck
 # Load the packed plugin in the matching OpenCode release
 bun run verify:release
 
+# Move the OpenCode SDK pins to the latest release
+bun run update:opencode
+
 # Link for local testing
 npm link
 ```
