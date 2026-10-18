@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.0.0](https://github.com/unfrgivn/opencode-config/compare/v2.0.0...v3.0.0) (2026-10-18)
+## [3.0.0](https://github.com/unfrgivn/opencode-config/releases/tag/v3.0.0) (2026-10-18)
 
 
 ### ⚠ BREAKING CHANGES
