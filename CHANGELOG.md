@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.3](https://github.com/unfrgivn/opencode-config/compare/v3.0.2...v3.0.3) (2026-10-18)
+
+
+### Bug Fixes
+
+* **tui:** read OpenCode 2 theme tokens in the sidebar ([c85710e](https://github.com/unfrgivn/opencode-config/commit/c85710e52aeac4f1eb37f287fd5d57648e0d4ba8))
+
 ## [3.0.2](https://github.com/unfrgivn/opencode-config/compare/v3.0.1...v3.0.2) (2026-10-18)
 
 
