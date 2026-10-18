@@ -11,6 +11,7 @@
  * OpenCode release `verify:release` boots, which is why they move together:
  *
  *   @opencode/plugin@X ──devDependencies──▶ @opentui/core, @opentui/solid
+ *                      ──peerDependencies─▶ @opencode/theme (types for the TUI theme)
  *   @opentui/solid ──peerDependencies──▶ solid-js
  */
 import { readFileSync, writeFileSync } from "node:fs"
@@ -70,29 +71,38 @@ const sdk = fetchManifest("@opencode/plugin", spec, projectRoot)
 const opentuiSolidVersion = exactVersion(sdk.devDependencies["@opentui/solid"], `@opencode/plugin@${sdk.version} devDependencies["@opentui/solid"]`)
 const opentuiSolid = fetchManifest("@opentui/solid", opentuiSolidVersion, projectRoot)
 
-const pins: Record<string, string> = {
-  "@opencode/plugin": sdk.version,
-  "@opentui/core": exactVersion(sdk.devDependencies["@opentui/core"], `@opencode/plugin@${sdk.version} devDependencies["@opentui/core"]`),
-  "@opentui/solid": opentuiSolidVersion,
-  "solid-js": exactVersion(opentuiSolid.peerDependencies["solid-js"], `@opentui/solid@${opentuiSolidVersion} peerDependencies["solid-js"]`),
+const pins: Record<string, Record<string, string>> = {
+  dependencies: {
+    "@opencode/plugin": sdk.version,
+    "@opentui/core": exactVersion(sdk.devDependencies["@opentui/core"], `@opencode/plugin@${sdk.version} devDependencies["@opentui/core"]`),
+    "@opentui/solid": opentuiSolidVersion,
+    "solid-js": exactVersion(opentuiSolid.peerDependencies["solid-js"], `@opentui/solid@${opentuiSolidVersion} peerDependencies["solid-js"]`),
+  },
+  // Types only. Without it the TUI context's theme silently types as `any`.
+  devDependencies: {
+    "@opencode/theme": exactVersion(sdk.peerDependencies["@opencode/theme"], `@opencode/plugin@${sdk.version} peerDependencies["@opencode/theme"]`),
+  },
 }
 
 const packageJson: unknown = JSON.parse(readFileSync(packageJsonPath, "utf8"))
-if (!isRecord(packageJson) || !isRecord(packageJson.dependencies)) {
-  throw new Error("package.json has no dependencies object")
-}
-const dependencies = packageJson.dependencies
+if (!isRecord(packageJson)) throw new Error("package.json is not a JSON object")
 
-const changes = Object.entries(pins).filter(([name, version]) => dependencies[name] !== version)
-if (changes.length === 0) {
+let changed = false
+for (const [section, sectionPins] of Object.entries(pins)) {
+  const current = packageJson[section]
+  if (!isRecord(current)) throw new Error(`package.json has no ${section} object`)
+  for (const [name, version] of Object.entries(sectionPins)) {
+    if (current[name] === version) continue
+    console.log(`${name}: ${String(current[name] ?? "(none)")} -> ${version}`)
+    current[name] = version
+    changed = true
+  }
+}
+if (!changed) {
   console.log(`Already on @opencode/plugin@${sdk.version}`)
   process.exit(0)
 }
 
-for (const [name, version] of changes) {
-  console.log(`${name}: ${String(dependencies[name] ?? "(none)")} -> ${version}`)
-  dependencies[name] = version
-}
 writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
 run(["bun", "install"], projectRoot)
 console.log("Updated package.json and bun.lock. Run `bun run verify:release` to boot the matching OpenCode release.")

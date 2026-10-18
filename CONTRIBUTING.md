@@ -234,7 +234,7 @@ bun test
 
 ## Keeping Up with OpenCode
 
-The SDK pins in `package.json` (`@opencode/plugin`, `@opentui/core`, `@opentui/solid`, and `solid-js`) move together, and `src/dependency-pins.test.ts` fails if they drift apart.
+The SDK pins in `package.json` (`@opencode/plugin`, `@opentui/core`, `@opentui/solid`, and `solid-js`, plus the `@opencode/theme` dev dependency that gives the TUI theme real types) move together, and `src/dependency-pins.test.ts` fails if they drift apart.
 
 - `bun run update:opencode [version]` moves them to the latest (or given) OpenCode release and refreshes `bun.lock`.
 - The **OpenCode compatibility** workflow does this daily, runs every check against the matching OpenCode release, and opens or updates the `deps/opencode-sdk` pull request. Incompatible releases open as drafts. Push fixes to that branch; the job will not overwrite it.

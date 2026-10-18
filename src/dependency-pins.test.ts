@@ -38,4 +38,11 @@ describe("OpenCode dependency pins", () => {
 
     expect(dependencies["solid-js"]).toBe(opentuiSolidPeers["solid-js"])
   })
+
+  test("installs the theme types the SDK declares its TUI context with", () => {
+    const devDependencies = readStringRecord(readPackageJson(), "devDependencies")
+    const sdkPeers = readStringRecord(readPackageJson("node_modules", "@opencode", "plugin"), "peerDependencies")
+
+    expect(devDependencies["@opencode/theme"]).toBe(sdkPeers["@opencode/theme"])
+  })
 })

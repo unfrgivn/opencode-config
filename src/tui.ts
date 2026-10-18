@@ -1,4 +1,5 @@
 import { Plugin } from "@opencode/plugin/tui"
+import type { Context } from "@opencode/plugin/tui/context"
 import type { RGBA } from "@opentui/core"
 import type { JSX } from "@opentui/solid"
 import { createElement, insert, setProp } from "@opentui/solid"
@@ -54,18 +55,6 @@ type ThemeColors = {
 
 type ColorSource = Pick<RGBA, "toInts">
 
-type HostTheme = {
-  text: {
-    default: ColorSource
-    subdued: ColorSource
-    action: { primary: { default: ColorSource } }
-  }
-  background: {
-    action: { primary: { default: ColorSource } }
-  }
-  border: { default: ColorSource }
-}
-
 export function toPortableColor(color: ColorSource): string {
   return `#${color
     .toInts()
@@ -73,13 +62,13 @@ export function toPortableColor(color: ColorSource): string {
     .join("")}`
 }
 
-export function portableTheme(theme: HostTheme): ThemeColors {
+export function portableTheme(theme: Context["theme"]): ThemeColors {
   return {
-    accent: toPortableColor(theme.background.action.primary.default),
-    background: toPortableColor(theme.text.action.primary.default),
-    borderActive: toPortableColor(theme.border.default),
-    text: toPortableColor(theme.text.default),
-    textMuted: toPortableColor(theme.text.subdued),
+    accent: toPortableColor(theme.background.action.primary.base),
+    background: toPortableColor(theme.text.action.primary.base),
+    borderActive: toPortableColor(theme.border.base),
+    text: toPortableColor(theme.text.base),
+    textMuted: toPortableColor(theme.text.muted),
   }
 }
 
