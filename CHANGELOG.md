@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.0.6](https://github.com/unfrgivn/opencode-config/compare/v3.0.5...v3.0.6) (2026-10-18)
+
+
+### Bug Fixes
+
+* **companion:** restart a companion left running by an older version ([#10](https://github.com/unfrgivn/opencode-config/issues/10)) ([5e7b077](https://github.com/unfrgivn/opencode-config/commit/5e7b077841c6ea324e4bfa1d26f73f275e20f9f7))
+* **install:** keep generated installs out of git with in-folder ignore files ([#8](https://github.com/unfrgivn/opencode-config/issues/8)) ([e6cbcc9](https://github.com/unfrgivn/opencode-config/commit/e6cbcc96a9adf56440a515acc1df8bdd4ed5d79c))
+* **orchestration:** keep shared state until the last location unloads ([#9](https://github.com/unfrgivn/opencode-config/issues/9)) ([781c369](https://github.com/unfrgivn/opencode-config/commit/781c369fadb7dcc63a597c81a53077d7c8b5d855))
+
 ## [3.0.5](https://github.com/unfrgivn/opencode-config/compare/v3.0.4...v3.0.5) (2026-10-18)
 
 
