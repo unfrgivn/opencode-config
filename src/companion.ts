@@ -296,6 +296,8 @@ export class CompanionManager {
   }
 
   onExit(): void {
+    if (!activeManagers.has(this)) return
+
     activeManagers.delete(this)
     if (activeManagers.size === 0 && activeExitListener) {
       process.removeListener("exit", activeExitListener)

@@ -281,6 +281,23 @@ describe("companion", () => {
     expect(readCompanionState().sessions).toEqual([])
   })
 
+  it("does not let a superseded manager remove the replacement session", () => {
+    const config = {
+      ...DEFAULT_CONFIG.companion,
+      enabled: true,
+      binaryPath: path.join(testDir, "missing-companion"),
+    }
+    const first = new CompanionManager("session-reload", "/repo", config)
+    const second = new CompanionManager("session-reload", "/repo", config)
+
+    first.onLoad()
+    second.onLoad()
+    first.onExit()
+
+    expect(readCompanionState().sessions.map((session) => session.session_id)).toEqual(["session-reload"])
+    second.onExit()
+  })
+
   it("tracks V2 context activity until the session becomes idle", () => {
     const manager = new CompanionManager("session-1", "/repo", {
       ...DEFAULT_CONFIG.companion,

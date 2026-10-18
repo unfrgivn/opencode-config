@@ -42,86 +42,25 @@ import { CompanionActivityTracker, CompanionManager } from "./companion"
 import { moduleDir } from "./module-path"
 import { VisionToolPlugin } from "./vision-tool-plugin"
 import { FellowshipOrchestrationPlugin } from "./orchestration-plugin"
+import { claimLocation, isLocalDevRoot, releaseLocation, type InitClaimStore } from "./init-guard"
 
 /** Resolve the package root directory (one level up from dist/) */
 const PACKAGE_ROOT = path.resolve(moduleDir(import.meta.url), "..")
 
 /**
- * Cross-instance, per-location dedup guard.
- *
- * When the same plugin is loaded from multiple paths (e.g. local dev path AND
- * npm cache via a remote provider config), Bun creates separate module
- * instances, each with their own module-scoped variables. A simple
- * `let initialized = false` only guards within ONE instance.
- *
- * We store the winning instance's PACKAGE_ROOT for each V2 location on
- * globalThis so later instances can decide whether to yield or take over. A
- * local dev instance (not inside node_modules) always wins over an npm-cached
- * one, ensuring the developer's build is the one that actually runs.
- *
+ * Claims live on globalThis instead of module state because separately loaded
+ * copies of this package (npm cache, a local dev build, or an older version
+ * during an update) are distinct module instances that must share one store.
  */
 const INIT_GUARD_KEY = Symbol.for("@unfrgivn/opencode-config:initialized")
-const INIT_OWNER = Symbol("@unfrgivn/opencode-config:owner")
 
-interface InitClaim {
-  packageRoot: string
-  owner: symbol
-}
+function getInitStore(): InitClaimStore {
+  const existing: unknown = Reflect.get(globalThis, INIT_GUARD_KEY)
+  if (existing instanceof Map) return existing
 
-function isFromNodeModules(packageRoot: string): boolean {
-  return packageRoot.includes("/node_modules/")
-}
-
-/**
- * Determine what this instance should do during initialization.
- *
- * Returns:
- * - `"skip"`: another instance already claimed the guard and we can't take priority
- * - `"first"`: no one has claimed yet, we're the first
- * - `"takeover"`: an npm-cached instance claimed first but we're local dev, take over
- */
-function getInitClaims(): Map<string, InitClaim> {
-  const g = globalThis as Record<symbol, unknown>
-  const existing = g[INIT_GUARD_KEY]
-  if (existing instanceof Map) return existing as Map<string, InitClaim>
-
-  const claims = new Map<string, InitClaim>()
-  g[INIT_GUARD_KEY] = claims
-  return claims
-}
-
-function getInitAction(projectDir: string): "skip" | "first" | "takeover" {
-  const existing = getInitClaims().get(projectDir)
-  if (!existing) return "first"
-
-  const existingRoot = existing.packageRoot
-
-  // Local dev takes over from npm cache
-  if (isFromNodeModules(existingRoot) && !isFromNodeModules(PACKAGE_ROOT)) {
-    logDebug(`Local dev build taking priority over npm-cached instance at ${existingRoot}`)
-    return "takeover"
-  }
-
-  return "skip"
-}
-
-function claimInit(projectDir: string): void {
-  const claim: InitClaim = { packageRoot: PACKAGE_ROOT, owner: INIT_OWNER }
-  getInitClaims().set(projectDir, claim)
-}
-
-function releaseInit(projectDir: string): void {
-  const state = globalThis as Record<symbol, unknown>
-  const claims = state[INIT_GUARD_KEY]
-  if (!(claims instanceof Map)) return
-
-  const existing = claims.get(projectDir)
-  if (existing?.owner === INIT_OWNER) {
-    claims.delete(projectDir)
-  }
-  if (claims.size === 0) {
-    delete state[INIT_GUARD_KEY]
-  }
+  const store: InitClaimStore = new Map()
+  Reflect.set(globalThis, INIT_GUARD_KEY, store)
+  return store
 }
 
 /** Collected remote agents for config injection */
@@ -779,13 +718,18 @@ function toV2McpConfig(config: McpConfig): Mcp.ServerConfig {
 async function setupFellowshipConfigPlugin(ctx: Parameters<V2Plugin["setup"]>[0]): Promise<() => Promise<void>> {
   const projectDir = ctx.location.directory
 
-  // Prevent duplicate initialization across module instances (e.g. local dev + npm cache)
-  const initAction = getInitAction(projectDir)
-  if (initAction === "skip") {
-    logDebug(`Skipping duplicate initialization for ${projectDir} (another instance already loaded)`)
+  const initStore = getInitStore()
+  const outcome = claimLocation(initStore, projectDir, PACKAGE_ROOT)
+  if (outcome.status === "yielded") {
+    logDebug(`Skipping duplicate initialization for ${projectDir} (local dev build already loaded from ${outcome.holder.packageRoot})`)
     return async () => {}
   }
-  claimInit(projectDir)
+  const { claim, replaced } = outcome
+  if (replaced) {
+    logDebug(isLocalDevRoot(PACKAGE_ROOT) && !isLocalDevRoot(replaced.packageRoot)
+      ? `Local dev build taking priority over npm-cached instance at ${replaced.packageRoot}`
+      : `Replacing earlier instance for ${projectDir} (${replaced.packageRoot})`)
+  }
 
   try {
   // Load user configuration
@@ -973,12 +917,12 @@ async function setupFellowshipConfigPlugin(ctx: Parameters<V2Plugin["setup"]>[0]
       }
     } finally {
       companionManager.onExit()
-      releaseInit(projectDir)
+      releaseLocation(initStore, projectDir, claim)
     }
   }
   } catch (error) {
     recordTuiError(error instanceof Error ? error.message : String(error), projectDir)
-    releaseInit(projectDir)
+    releaseLocation(initStore, projectDir, claim)
     throw error
   }
 }
