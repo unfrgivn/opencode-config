@@ -138,7 +138,7 @@ src/
 ### Plugin Format
 
 ```typescript
-import { Plugin } from "@opencode-ai/plugin"
+import { Plugin } from "@opencode/plugin"
 
 export const MyPlugin = Plugin.define({
   id: "@unfrgivn/opencode-config:my-plugin",
@@ -224,6 +224,13 @@ bun run typecheck
 # Run tests
 bun test
 ```
+
+### Verify in OpenCode
+
+`bun run verify:release` packs the plugin, installs it with npm the way OpenCode does, then boots the OpenCode release matching the `@opencode/plugin` pin in a sandboxed home and checks that the plugin loads. OpenCode gives plugins its own `effect` and `@opencode/plugin` at runtime, so importing the package under plain Bun cannot catch an incompatible SDK; only the real host can.
+
+- `OPENCODE_VERSION=latest bun run verify:release` tests the current build against a different OpenCode release.
+- `OPENCODE_BIN="$(command -v opencode)" bun run verify:release` uses an installed binary instead of downloading one.
 
 ## Pull Request Process
 

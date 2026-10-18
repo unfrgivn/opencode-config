@@ -1,4 +1,4 @@
-import { Plugin } from "@opencode-ai/plugin/tui"
+import { Plugin } from "@opencode/plugin/tui"
 import type { RGBA } from "@opentui/core"
 import type { JSX } from "@opentui/solid"
 import { createElement, insert, setProp } from "@opentui/solid"

@@ -1,9 +1,6 @@
-import { Model, Plugin } from "@opencode-ai/plugin"
-import type { Plugin as V2Plugin } from "@opencode-ai/plugin/promise/plugin"
-import type { Agent } from "@opencode-ai/schema/agent"
-import type { Command } from "@opencode-ai/schema/command"
-import type { Mcp } from "@opencode-ai/schema/mcp"
-import type { Registration } from "@opencode-ai/plugin/promise/registration"
+import { Model, Plugin, type Mcp } from "@opencode/plugin"
+import type { Plugin as V2Plugin } from "@opencode/plugin/promise/plugin"
+import type { Registration } from "@opencode/plugin/promise/registration"
 import { loadConfigWithLocation, type UserConfig } from "./config"
 import { discoverAssets, type DiscoveryResult } from "./assets"
 import type { AgentConfig } from "./agent"
@@ -780,8 +777,7 @@ function toV2McpConfig(config: McpConfig): Mcp.ServerConfig {
  * to all users without polluting their local config directories.
  */
 async function setupFellowshipConfigPlugin(ctx: Parameters<V2Plugin["setup"]>[0]): Promise<() => Promise<void>> {
-  const location = await ctx.agent.list()
-  const projectDir = location.location.directory
+  const projectDir = ctx.location.directory
 
   // Prevent duplicate initialization across module instances (e.g. local dev + npm cache)
   const initAction = getInitAction(projectDir)
@@ -795,7 +791,7 @@ async function setupFellowshipConfigPlugin(ctx: Parameters<V2Plugin["setup"]>[0]
   // Load user configuration
   const { config: userConfig, configPaths, activePreset } = loadConfigWithLocation(projectDir)
   const companionManager = new CompanionManager(
-    `proc_${process.pid}_${location.location.project.id}`,
+    `proc_${process.pid}_${ctx.location.project.id}`,
     projectDir,
     userConfig.companion,
     {

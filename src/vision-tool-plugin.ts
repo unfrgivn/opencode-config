@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { opencodeConfigDir } from "./paths";
-import { Plugin } from "@opencode-ai/plugin";
+import { Plugin } from "@opencode/plugin";
 
 export function parseJsonOrJsonc(text: string): unknown {
   let output = "";

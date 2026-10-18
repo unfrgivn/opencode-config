@@ -464,6 +464,9 @@ bun test
 # Type check
 bun run typecheck
 
+# Load the packed plugin in the matching OpenCode release
+bun run verify:release
+
 # Link for local testing
 npm link
 ```
