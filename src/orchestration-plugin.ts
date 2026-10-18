@@ -229,6 +229,24 @@ const sessionStates = new Map<string, SessionState>()
 const taskRecords = new Map<string, TaskRecord>()
 const taskByCallID = new Map<string, string>()
 let ownerLeaseHeartbeat: ReturnType<typeof setInterval> | null = null
+/** OpenCode creates one plugin instance per location, and reloads can overlap new setup with old cleanup. */
+let activeOrchestrationRuntimes = 0
+
+export function acquireOrchestrationRuntime(): () => void {
+  activeOrchestrationRuntimes += 1
+  let released = false
+
+  return () => {
+    if (released) return
+    released = true
+    activeOrchestrationRuntimes -= 1
+    if (activeOrchestrationRuntimes !== 0) return
+    stopOwnerLease()
+    sessionStates.clear()
+    taskRecords.clear()
+    taskByCallID.clear()
+  }
+}
 
 function getSessionState(sessionID: string): SessionState {
   const existing = sessionStates.get(sessionID)
@@ -2055,64 +2073,67 @@ async function handleOrchestrationEvent(event: unknown): Promise<void> {
 export const FellowshipOrchestrationPlugin = Plugin.define({
   id: "@unfrgivn/opencode-config:orchestration",
   setup: async (ctx) => {
-    await recoverPersistedTasks(parseConfigFromFile().config)
-    const registrations = [
-      await ctx.tool.transform((tools) => {
-        tools.add({
-          name: "fellowship_orchestration",
-          description: "Controls fellowship orchestration state. Actions: continue, stop, tasks, task, diagnostics.",
-          input: {
-            type: "object",
-            properties: {
-              action: { type: "string", enum: ["continue", "stop", "tasks", "task", "diagnostics"] },
-              task_id: { type: "string" },
+    const releaseRuntime = acquireOrchestrationRuntime()
+    try {
+      await recoverPersistedTasks(parseConfigFromFile().config)
+      const registrations = [
+        await ctx.tool.transform((tools) => {
+          tools.add({
+            name: "fellowship_orchestration",
+            description: "Controls fellowship orchestration state. Actions: continue, stop, tasks, task, diagnostics.",
+            input: {
+              type: "object",
+              properties: {
+                action: { type: "string", enum: ["continue", "stop", "tasks", "task", "diagnostics"] },
+                task_id: { type: "string" },
+              },
+              required: ["action"],
+              additionalProperties: false,
             },
-            required: ["action"],
-            additionalProperties: false,
-          },
-          execute: async (input, context) => {
-            if (!isOrchestrationToolInput(input)) return { content: "Invalid orchestration tool input" }
-            return { content: await executeOrchestrationTool(input, context.sessionID) }
-          },
-        })
-      }),
-      await ctx.tool.hook("execute.before", async (event) => {
-        await handleToolBefore(event.tool, event.sessionID, event.id, event.input)
-      }),
-      await ctx.tool.hook("execute.after", async (event) => {
-        const output = event.status === "completed" ? toolResultText(event.result.content) : event.error.message
-        const metadata = event.status === "completed" ? event.result.metadata ?? {} : {}
-        const nextOutput = await handleToolAfter(event.tool, event.sessionID, event.id, output, metadata)
-        if (event.status === "completed") {
-          event.result = { ...event.result, content: nextOutput }
-        }
-      }),
-    ]
+            execute: async (input, context) => {
+              if (!isOrchestrationToolInput(input)) return { content: "Invalid orchestration tool input" }
+              return { content: await executeOrchestrationTool(input, context.sessionID) }
+            },
+          })
+        }),
+        await ctx.tool.hook("execute.before", async (event) => {
+          await handleToolBefore(event.tool, event.sessionID, event.id, event.input)
+        }),
+        await ctx.tool.hook("execute.after", async (event) => {
+          const output = event.status === "completed" ? toolResultText(event.result.content) : event.error.message
+          const metadata = event.status === "completed" ? event.result.metadata ?? {} : {}
+          const nextOutput = await handleToolAfter(event.tool, event.sessionID, event.id, output, metadata)
+          if (event.status === "completed") {
+            event.result = { ...event.result, content: nextOutput }
+          }
+        }),
+      ]
 
-    const controller = new AbortController()
-    const eventTask = (async () => {
-      try {
-        for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-          await handleOrchestrationEvent(event)
+      const controller = new AbortController()
+      const eventTask = (async () => {
+        try {
+          for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+            await handleOrchestrationEvent(event)
+          }
+        } catch (error) {
+          if (!controller.signal.aborted) {
+            logWarn(`Orchestration event subscription stopped: ${error instanceof Error ? error.message : String(error)}`)
+          }
         }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          logWarn(`Orchestration event subscription stopped: ${error instanceof Error ? error.message : String(error)}`)
+      })()
+
+      return async () => {
+        controller.abort()
+        try {
+          await eventTask
+          for (const registration of registrations.reverse()) await registration.dispose()
+        } finally {
+          releaseRuntime()
         }
       }
-    })()
-
-    return async () => {
-      controller.abort()
-      try {
-        await eventTask
-        for (const registration of registrations.reverse()) await registration.dispose()
-      } finally {
-        stopOwnerLease()
-        sessionStates.clear()
-        taskRecords.clear()
-        taskByCallID.clear()
-      }
+    } catch (error) {
+      releaseRuntime()
+      throw error
     }
   },
 })

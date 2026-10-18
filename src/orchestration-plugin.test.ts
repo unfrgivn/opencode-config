@@ -2481,3 +2481,35 @@ describe("fellowship-orchestration tmux runtime", () => {
     expect(diagnostics).toContain("PASS /preset")
   })
 })
+
+describe("fellowship-orchestration runtime lifecycle", () => {
+  test("keeps shared state until the last runtime releases it", async () => {
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const mod = await import(`./orchestration-plugin.ts?lifecycle=${unique}`)
+    const hooks = await mod.FellowshipOrchestrationPluginHooks({
+      runTmuxCommand: () => ({ status: 0, stdout: "", stderr: "" }),
+    })
+    const releaseFirst = mod.acquireOrchestrationRuntime()
+    const releaseSecond = mod.acquireOrchestrationRuntime()
+
+    await hooks.tool.fellowship_orchestration.execute(
+      { action: "continue" },
+      { sessionID: "shared-runtime-session" },
+    )
+
+    releaseFirst()
+    releaseFirst()
+    const stateWhileRuntimeRemains = await hooks.tool.fellowship_orchestration.execute(
+      { action: "diagnostics" },
+      { sessionID: "shared-runtime-session" },
+    )
+    expect(stateWhileRuntimeRemains).toContain("- Loop mode: enabled")
+
+    releaseSecond()
+    const stateAfterLastRuntimeReleases = await hooks.tool.fellowship_orchestration.execute(
+      { action: "diagnostics" },
+      { sessionID: "shared-runtime-session" },
+    )
+    expect(stateAfterLastRuntimeReleases).toContain("- Loop mode: disabled")
+  })
+})
