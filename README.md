@@ -388,7 +388,7 @@ Pre-configured agent definitions with model, temperature, and system prompts. Th
 | `researcher` (`radagast`)     | GPT-5.2           | "How does library X work?"       | Researches external docs, OSS repos, and the web. Classifies the question (conceptual, implementation, history, or comprehensive), fetches official sources, and returns evidence-backed recommendations with links.                                                          |
 | `implementer` (`celebrimbor`) | GPT-5.2 Codex     | "Build this end-to-end."         | The workhorse implementation agent. Operates like a senior staff engineer: explores context, plans edits, executes changes, runs tests, and iterates until done. Does not stop at partial progress or ask permission for normal engineering work.                             |
 | `architect` (`elrond`)        | GPT-5.2           | "What's the right architecture?" | Read-only strategic advisor. Analyzes codebases, evaluates tradeoffs, and returns a bottom-line recommendation with an action plan and effort estimate. Biases toward simplicity and existing patterns over speculative complexity.                                           |
-| `analyst` (`galadriel`)       | Gemini 3.1 Pro    | "What's in this image/PDF?"      | Multimodal analysis specialist. Handles PDFs, images, diagrams, and charts that other agents cannot process as plain text. Extracts targeted information and returns concise findings with confidence notes. Also serves as the backend for the vision tool.                  |
+| `analyst` (`galadriel`)       | Gemini 3.8 Flash  | "What's in this image?"          | Multimodal analysis specialist. Handles PNG, JPEG, and WebP images, diagrams, and charts that other agents cannot process as plain text. Extracts targeted information and returns concise findings with confidence notes. Also serves as the backend for the vision tool.    |
 | `tdd` (`aragorn`)             | GPT-5.2 Codex     | "Write tests for this."          | Strict TDD specialist following Red-Green-Refactor. Writes a failing test first, makes it pass with minimal code, then refactors under green. Produces a test plan, TDD log, execution results, and a quality scorecard. Never writes production code without a failing test. |
 
 ### Commands (`command/`)
@@ -428,7 +428,7 @@ Native V2 plugins compiled into the package root and activated during setup.
 | Plugin                   | Description                                                                      |
 | ------------------------ | -------------------------------------------------------------------------------- |
 | `fellowship-orchestration` | Orchestration runtime: admission limits, task tracking, tmux sessions, provider backpressure, recovery |
-| `vision-tool`            | Multimodal analysis via Gemini: bypasses Claude's 8000px image limit             |
+| `vision-tool`            | PNG/JPEG/WebP analysis in a child session on the analyst agent's model, keeping image tokens out of the caller |
 
 ### Instructions (`instruction/`)
 

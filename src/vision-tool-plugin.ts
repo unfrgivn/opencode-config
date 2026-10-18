@@ -1,9 +1,9 @@
 /**
  * Vision Tool Plugin
  *
- * Bypasses Claude's 8000px image limit by sending files directly to a Gemini agent.
+ * Analyze PNG, JPEG, and WebP files in a child session on the configured analyst agent.
  *
- * Usage: vision(file_path="/path/to/large-image.png", goal="Describe what you see")
+ * Usage: vision(file_path="/path/to/image.png", goal="Describe what you see")
  *
  */
 
@@ -113,33 +113,30 @@ function resolveVisionAgentName(): string {
   return "analyst";
 }
 
-// MIME type mapping
+// Live-tested on OpenCode 2.0.32 with github-copilot/gemini-3.8-flash: PNG, JPEG, and WebP reach
+// the model. BMP, HEIC, WAV, and MP4 are dropped without an error, and PDF and GIF fail the request.
 export const MIME_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".png": "image/png",
-  ".gif": "image/gif",
   ".webp": "image/webp",
-  ".heic": "image/heic",
-  ".heif": "image/heif",
-  ".bmp": "image/bmp",
-  ".pdf": "application/pdf",
-  ".mp4": "video/mp4",
-  ".mov": "video/quicktime",
-  ".avi": "video/x-msvideo",
-  ".webm": "video/webm",
-  ".wav": "audio/wav",
-  ".mp3": "audio/mpeg",
-  ".ogg": "audio/ogg",
 };
 
 export const SUPPORTED_EXTENSIONS = Object.keys(MIME_TYPES).sort().join(", ");
 
 export const SUPPORTED_MIME_TYPES = new Set(Object.values(MIME_TYPES));
 
-function inferMimeType(filePath: string): string {
-  const ext = filePath.toLowerCase().match(/\.[^.]+$/)?.[0] || "";
-  return MIME_TYPES[ext] || "application/octet-stream";
+// No period after the command, so a model cannot read it as part of the output filename.
+const CONVERSION_HINT =
+  "Convert images and PDF pages to PNG first (sips converts only the first page of a PDF), for example: sips -s format png input.heic --out input.png";
+
+export function fileExtensionError(filePath: string): string | null {
+  const extension = filePath.toLowerCase().match(/\.[^.]+$/)?.[0];
+  if (!extension) {
+    return `Unsupported file: missing extension. Supported types are: ${SUPPORTED_EXTENSIONS}. ${CONVERSION_HINT}`;
+  }
+  if (extension in MIME_TYPES) return null;
+  return `Unsupported file type: ${extension.slice(1).toUpperCase()}. Supported types are: ${SUPPORTED_EXTENSIONS}. ${CONVERSION_HINT}`;
 }
 
 export function parseMimeFromDataUrl(data: string): string | null {
@@ -151,55 +148,18 @@ export function inferMimeTypeFromBase64(data: string): string {
   const dataUrlMime = parseMimeFromDataUrl(data);
   if (dataUrlMime) return dataUrlMime;
 
-  // Check magic bytes in base64
   const prefix = data.slice(0, 20);
   if (prefix.startsWith("iVBORw0KGgo")) return "image/png";
   if (prefix.startsWith("/9j/")) return "image/jpeg";
   if (prefix.startsWith("R0lGOD")) return "image/gif";
   if (prefix.startsWith("UklGR")) return "image/webp";
   if (prefix.startsWith("JVBERi")) return "application/pdf";
-  return "image/png"; // Default fallback
+  return "image/png";
 }
 
 export function extractBase64Data(data: string): string {
-  // Strip data: URL prefix if present
   const match = data.match(/^data:[^;]+;base64,(.+)$/);
   return match ? match[1] : data;
-}
-
-// Extract assistant text from session messages
-function extractLatestAssistantText(messages: unknown): string | null {
-  if (!Array.isArray(messages) || messages.length === 0) return null;
-
-  const assistantMessages = messages
-    .filter(
-      (msg): msg is Record<string, unknown> =>
-        typeof msg === "object" && msg !== null,
-    )
-    .filter((msg) => {
-      const info = msg.info as Record<string, unknown> | undefined;
-      return info?.role === "assistant";
-    })
-    .sort((a, b) => {
-      const aTime = (a.info as Record<string, unknown>)?.time as
-        | Record<string, number>
-        | undefined;
-      const bTime = (b.info as Record<string, unknown>)?.time as
-        | Record<string, number>
-        | undefined;
-      return (bTime?.created ?? 0) - (aTime?.created ?? 0);
-    });
-
-  const lastMessage = assistantMessages[0];
-  if (!lastMessage) return null;
-
-  const parts = lastMessage.parts as Array<Record<string, unknown>> | undefined;
-  if (!Array.isArray(parts)) return null;
-
-  return parts
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text as string)
-    .join("\n");
 }
 
 type VisionInput = {
@@ -222,39 +182,77 @@ function content(text: string): { content: string } {
   return { content: text };
 }
 
-export function createVisionSessionInput(
-  goal: string,
-  visionAgent: string,
-  parentSessionID: string,
-  parentDirectory: string,
-) {
+const VISION_PLUGIN_ID = "@unfrgivn/opencode-config:vision-tool";
+const VISION_TOOL_NAME = "vision";
+
+type PluginContext = Parameters<typeof Plugin.define>[0]["setup"] extends (input: infer Context) => unknown
+  ? Context
+  : never;
+type SessionCreateInput = Parameters<PluginContext["session"]["create"]>[0];
+type VisionModel = NonNullable<NonNullable<SessionCreateInput>["model"]>;
+export type VisionSessionMessage = Awaited<ReturnType<PluginContext["session"]["context"]>>[number];
+
+type VisionSessionInput = {
+  goal: string;
+  agent: string;
+  parentSessionID: string;
+  directory: string;
+  agentModel?: VisionModel;
+  callerModel?: VisionModel;
+};
+
+// The child is created directly, not through the `subagent` tool, so OpenCode applies none of the
+// subagent defaults:
+// - parentID nests it under the caller instead of listing it as a top-level session.
+// - The model is explicit because a directly created session ignores its agent's model. The rule
+//   matches subagents: the agent's own model, else the caller's.
+// - The child cannot call `vision` or launch subagents, so it never opens more sessions. The
+//   analyst prompt says to call `vision`, which would otherwise recurse. Other tools stay
+//   available because OpenCode's free tier rejects requests that carry no tools (403).
+export function createVisionSessionInput(input: VisionSessionInput): SessionCreateInput {
+  const model = input.agentModel ?? input.callerModel;
   return {
-    title: `vision: ${goal.substring(0, 50)}`,
-    parentID: parentSessionID,
-    agent: visionAgent,
-    model: {
-      providerID: "github-copilot",
-      id: "gemini-3-flash-preview",
-    },
-    location: { directory: parentDirectory },
+    title: `vision: ${input.goal.substring(0, 50)}`,
+    parentID: input.parentSessionID,
+    agent: input.agent,
+    ...(model ? { model } : {}),
+    location: { directory: input.directory },
+    metadata: { source: VISION_PLUGIN_ID },
+    permissions: [
+      { action: VISION_TOOL_NAME, resource: "*", effect: "deny" },
+      { action: "subagent", resource: "*", effect: "deny" },
+    ],
   };
 }
 
-export const VisionToolPlugin = async (ctx: Parameters<typeof Plugin.define>[0]["setup"] extends (input: infer C) => unknown ? C : never) => {
+type VisionOutcome = { ok: true; text: string } | { ok: false; error: string };
+
+function isAssistantMessage(message: VisionSessionMessage): message is Extract<VisionSessionMessage, { type: "assistant" }> {
+  return message.type === "assistant";
+}
+
+export function readVisionOutcome(messages: ReadonlyArray<VisionSessionMessage>): VisionOutcome {
+  const idle = [...messages].reverse().find((message): message is Extract<VisionSessionMessage, { type: "idle" }> => message.type === "idle");
+  if (idle?.outcome === "failed") return { ok: false, error: idle.error?.message ?? "Vision analysis failed" };
+  if (idle?.outcome === "interrupted") return { ok: false, error: "Vision analysis was interrupted" };
+
+  const assistant = [...messages].reverse().find(isAssistantMessage);
+  const text = assistant?.content
+    .filter((part): part is Extract<typeof part, { type: "text" }> => part.type === "text")
+    .map((part) => part.text)
+    .join("\n") ?? "";
+  return text ? { ok: true, text } : { ok: false, error: "Vision analysis returned no text" };
+}
+
+export const VisionToolPlugin = async (ctx: PluginContext) => {
   const visionAgent = resolveVisionAgentName();
 
   const registration = await ctx.tool.transform((tools) => {
     tools.add({
-      name: "vision",
-        description: `Analyze media files (PDFs, images, diagrams) that require visual interpretation.
-Use when you need to:
-- Extract specific information from documents or images
-- Describe visual content (charts, diagrams, screenshots)
-- Analyze PDFs that are image-based or have complex layouts
-
-This tool handles large images (>8000px) that would otherwise fail with Claude's API.
-
-IMPORTANT: Use this tool INSTEAD of Read for image/PDF files. Do NOT attempt Read first - go directly to vision for any .png, .jpg, .jpeg, .gif, .webp, .pdf, .heic, .heif, .bmp, or video/audio files.`,
+      name: VISION_TOOL_NAME,
+        description: `Analyze PNG, JPEG, and WebP images in a child session on the analyst agent's model.
+Use this instead of Read for images to keep image tokens out of the calling session.
+Convert other formats to PNG first.`,
       input: {
         type: "object",
         properties: {
@@ -280,25 +278,10 @@ IMPORTANT: Use this tool INSTEAD of Read for image/PDF files. Do NOT attempt Rea
             return content("Error: Must provide 'goal' describing what to analyze");
           }
 
-          // Validate file exists and has supported extension BEFORE proceeding
-          // This prevents downstream errors that can corrupt the TUI
           if (file_path) {
-            // Check for valid extension FIRST (before file existence check)
-            const ext = file_path.toLowerCase().match(/\.[^.]+$/)?.[0];
-            if (!ext) {
-              return content("Error: File path must include an extension such as .png, .pdf, or .jpg");
-            }
-
-            // Check for supported MIME type
-            const mimeType = MIME_TYPES[ext];
-            if (!mimeType) {
-              return content(`Error: Unsupported file extension. Supported types are: ${SUPPORTED_EXTENSIONS}`);
-            }
-
-            // Check file exists
-            if (!existsSync(file_path)) {
-              return content("Error: File not found at the specified path");
-            }
+            const extensionError = fileExtensionError(file_path);
+            if (extensionError) return content(`Error: ${extensionError}`);
+            if (!existsSync(file_path)) return content("Error: File not found at the specified path");
           }
 
           // Build file part
@@ -309,7 +292,7 @@ IMPORTANT: Use this tool INSTEAD of Read for image/PDF files. Do NOT attempt Rea
           if (image_data) {
             const mimeType = inferMimeTypeFromBase64(image_data);
             if (!SUPPORTED_MIME_TYPES.has(mimeType)) {
-              return content(`Error: Unsupported image format. Detected MIME type '${mimeType}'. Supported types are: ${[...SUPPORTED_MIME_TYPES].sort().join(", ")}`);
+              return content(`Error: Unsupported image format. Detected MIME type '${mimeType}'. Supported types are: ${[...SUPPORTED_MIME_TYPES].sort().join(", ")}. ${CONVERSION_HINT}`);
             }
             const base64Data = extractBase64Data(image_data);
             temporaryDir = mkdtempSync(join(tmpdir(), "fellowship-vision-"));
@@ -322,7 +305,6 @@ IMPORTANT: Use this tool INSTEAD of Read for image/PDF files. Do NOT attempt Rea
             };
             sourceDescription = "clipboard/pasted image";
           } else if (file_path) {
-            const mimeType = inferMimeType(file_path);
             filePart = {
               uri: pathToFileURL(file_path).href,
               name: basename(file_path),
@@ -349,11 +331,20 @@ If the requested information is not found, clearly state what is missing.`;
             const parentDirectory =
               parentSession?.location.directory ?? process.cwd();
 
-            // Create child session with restricted permissions to reduce token overhead
-            // This prevents inheriting full parent context, reducing token overhead ~3.6x
-            const createResult = await ctx.session.create(
-              createVisionSessionInput(goal, visionAgent, toolContext.sessionID, parentDirectory),
-            );
+            // An unknown agent falls back to the caller's model; session.create then reports the
+            // missing agent itself.
+            const agentModel = await ctx.agent
+              .get({ agentID: visionAgent })
+              .then((agent) => agent.data.model)
+              .catch(() => undefined);
+            const createResult = await ctx.session.create(createVisionSessionInput({
+              goal,
+              agent: visionAgent,
+              parentSessionID: toolContext.sessionID,
+              directory: parentDirectory,
+              agentModel,
+              callerModel: parentSession?.model,
+            }));
 
             const sessionID = createResult.id;
 
@@ -365,16 +356,10 @@ If the requested information is not found, clearly state what is missing.`;
             });
             await ctx.session.wait({ sessionID });
 
-            const generateResult = await ctx.session.generate({
-              sessionID,
-              prompt: "Return only the analysis result from the previous response.",
-            });
-
-            if (!generateResult.text) {
-              return content(`Error: No response from ${visionAgent} agent`);
-            }
-
-            return content(generateResult.text);
+            const outcome = readVisionOutcome(await ctx.session.context({ sessionID }));
+            return outcome.ok
+              ? content(outcome.text)
+              : content(`Error analyzing ${sourceDescription}: ${outcome.error}`);
           } catch (error) {
             const errorMessage =
               error instanceof Error ? error.message : String(error);
@@ -392,7 +377,7 @@ If the requested information is not found, clearly state what is missing.`;
 };
 
 const plugin = Plugin.define({
-  id: "@unfrgivn/opencode-config:vision-tool",
+  id: VISION_PLUGIN_ID,
   setup: VisionToolPlugin,
 });
 
