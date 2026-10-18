@@ -6,9 +6,12 @@ import { tmpdir } from "node:os"
 import { z } from "zod"
 
 const PACKAGE_NAME = "@unfrgivn/opencode-config"
+const TUI_PLUGIN_ID = `${PACKAGE_NAME}:tui`
 const HOST_STARTUP_TIMEOUT_MS = 30_000
 const HOST_PLUGIN_TIMEOUT_MS = 90_000
 const HOST_STOP_TIMEOUT_MS = 10_000
+const SIDEBAR_TIMEOUT_MS = 60_000
+const SIDEBAR_SETTLE_MS = 3_000
 const POLL_INTERVAL_MS = 500
 
 const PluginList = z.object({
@@ -21,8 +24,10 @@ const PluginList = z.object({
 })
 type PluginState = z.infer<typeof PluginList>["data"][number]["state"]
 
-function run(command: string[], cwd: string): string {
-  const result = Bun.spawnSync(command, { cwd, stdout: "pipe", stderr: "pipe" })
+const SessionCreated = z.object({ data: z.object({ id: z.string() }) })
+
+function run(command: string[], cwd: string, env?: Record<string, string>): string {
+  const result = Bun.spawnSync(command, { cwd, env, stdout: "pipe", stderr: "pipe" })
   if (result.exitCode !== 0) {
     throw new Error(`${command.join(" ")} failed:\n${result.stderr.toString()}`)
   }
@@ -79,22 +84,22 @@ function verifyManifest(manifest: Record<string, unknown>): void {
 }
 
 /**
- * Plain Bun resolves `effect` and `@opencode/plugin` from the plugin's own
- * node_modules. OpenCode does not: it substitutes the host's copies, so only
- * booting the real host proves the plugin loads.
+ * Plain Bun resolves `effect`, `@opencode/plugin`, and OpenTUI from the plugin's
+ * own node_modules. OpenCode does not: it substitutes the host's copies, so only
+ * the real host proves the server plugin loads and the TUI sidebar renders.
  */
 async function verifyInOpenCode(installDir: string, manifest: Record<string, unknown>): Promise<void> {
   const opencode = resolveOpenCode(manifest)
-  const version = run([opencode, "--version"], tempDir).trim()
+  const hostVersion = run([opencode, "--version"], tempDir).trim()
+  if (typeof manifest.version !== "string") throw new Error("installed package.json has no version")
   const home = join(tempDir, "home")
   const project = join(tempDir, "project")
-  const pluginDir = join(installDir, "opencode-plugin")
+  // A plugin directory loads its index and tui files. dist has both, so OpenCode imports
+  // them from node_modules exactly like an npm install. A shim outside node_modules would
+  // not: OpenTUI only swaps in the host's @opentui/solid for node_modules files it imports directly.
+  const pluginDir = join(installDir, "node_modules", "@unfrgivn", "opencode-config", "dist")
   mkdirSync(join(home, ".config", "opencode"), { recursive: true })
   mkdirSync(project)
-  mkdirSync(pluginDir)
-  // OpenCode loads a local plugin directory through its root index file. Re-exporting
-  // the package makes the host resolve it through its exports map, like an npm plugin.
-  writeFileSync(join(pluginDir, "index.js"), `export { default } from "${PACKAGE_NAME}"\n`)
   writeFileSync(
     join(home, ".config", "opencode", "opencode.json"),
     `${JSON.stringify({ $schema: "https://opencode.ai/config.json", plugins: [pluginDir] }, null, 2)}\n`,
@@ -112,9 +117,11 @@ async function verifyInOpenCode(installDir: string, manifest: Record<string, unk
     stdio: ["ignore", "pipe", "pipe"],
   })
   let state: PluginState
+  let sidebar: Sidebar | undefined
   try {
     const url = await listeningUrl(server)
     state = await pluginState(opencode, url, project, env, pluginDir)
+    if (state.status === "active") sidebar = await sidebarState(opencode, url, project, env, `v${manifest.version}`)
   } finally {
     await stopServer(server)
   }
@@ -122,10 +129,70 @@ async function verifyInOpenCode(installDir: string, manifest: Record<string, unk
     // Read after shutdown: the server log is not flushed when the API already reports the failure.
     const log = join(home, ".local", "share", "opencode", "log", "opencode.log")
     throw new Error(
-      `${PACKAGE_NAME} failed to load in ${version}: ${state.error ?? state.status}${state.ref ? ` (${state.ref})` : ""}\n${causeFromLog(log, state.ref)}`,
+      `${PACKAGE_NAME} failed to load in ${hostVersion}: ${state.error ?? state.status}${state.ref ? ` (${state.ref})` : ""}\n${causeFromLog(log, state.ref)}`,
     )
   }
-  console.log(`${PACKAGE_NAME} is active in ${version}`)
+  console.log(`${PACKAGE_NAME} is active in ${hostVersion}`)
+  if (sidebar?.status !== "rendered") {
+    throw new Error(`The ${PACKAGE_NAME} sidebar did not render in ${hostVersion} (${sidebar?.status ?? "not checked"}). Screen:\n${sidebar?.screen ?? ""}`)
+  }
+  console.log(`${PACKAGE_NAME} sidebar renders in ${hostVersion}`)
+}
+
+type Sidebar = { status: "rendered" | "crashed" | "missing"; screen: string }
+
+/**
+ * The sidebar slot only renders in a session view, so this opens an empty session
+ * (no model call) in the real TUI on a private tmux server and reads the screen.
+ * OpenCode reports slot crashes in a toast that names the plugin.
+ */
+async function sidebarState(
+  opencode: string,
+  url: string,
+  project: string,
+  env: Record<string, string>,
+  versionLabel: string,
+): Promise<Sidebar> {
+  const tmuxPath = Bun.which("tmux")
+  if (!tmuxPath) throw new Error("tmux is required to check the TUI sidebar: brew install tmux, or apt-get install tmux")
+  const created = run(
+    [opencode, "api", "--server", url, "post", "/api/session", "-d", JSON.stringify({ title: "verify:release", location: { directory: project } })],
+    project,
+    env,
+  )
+  const sessionID = SessionCreated.parse(JSON.parse(created)).data.id
+
+  // -f /dev/null keeps the developer's tmux.conf out of the sandbox.
+  const tmux = (...args: string[]) => Bun.spawnSync([tmuxPath, "-L", `fellowship-verify-${process.pid}`, "-f", "/dev/null", ...args], { stdout: "pipe", stderr: "pipe" })
+  const tuiEnv = { ...env, TERM: "tmux-256color", COLORTERM: "truecolor", LANG: "en_US.UTF-8" }
+  const started = tmux(
+    "new-session", "-d", "-s", "verify", "-x", "200", "-y", "50", "-c", project, "--",
+    "env", "-i", ...Object.entries(tuiEnv).map(([key, value]) => `${key}=${value}`),
+    opencode, "--server", url, "--session", sessionID,
+  )
+  if (started.exitCode !== 0) throw new Error(`tmux could not start the OpenCode TUI:\n${started.stderr.toString()}`)
+  // tmux leaves its socket file behind after kill-server.
+  const socketPath = tmux("display-message", "-p", "-t", "verify", "#{socket_path}").stdout.toString().trim()
+
+  let screen = ""
+  let renderedAt: number | undefined
+  try {
+    const deadline = Date.now() + SIDEBAR_TIMEOUT_MS
+    while (Date.now() < deadline) {
+      await Bun.sleep(POLL_INTERVAL_MS)
+      const capture = tmux("capture-pane", "-p", "-t", "verify")
+      if (capture.exitCode !== 0) return { status: "missing", screen: `${screen}\n(the TUI exited: ${capture.stderr.toString().trim()})` }
+      screen = capture.stdout.toString().split("\n").map((line) => line.trimEnd()).filter((line) => line.length > 0).join("\n")
+      if (screen.includes(TUI_PLUGIN_ID)) return { status: "crashed", screen }
+      // Keep watching a few refreshes after the first render: the sidebar re-renders as its snapshot changes.
+      if (renderedAt === undefined && screen.includes("Fellowship") && screen.includes(versionLabel)) renderedAt = Date.now()
+      if (renderedAt !== undefined && Date.now() - renderedAt >= SIDEBAR_SETTLE_MS) return { status: "rendered", screen }
+    }
+    return { status: "missing", screen }
+  } finally {
+    tmux("kill-server")
+    if (socketPath) rmSync(socketPath, { force: true })
+  }
 }
 
 function resolveOpenCode(manifest: Record<string, unknown>): string {

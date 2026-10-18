@@ -41,6 +41,10 @@ jobs:
           node --version
           npm --version
 
+      # verify:release drives the real OpenCode TUI in tmux to check the sidebar.
+      - name: Install tmux
+        run: command -v tmux || (sudo apt-get update -qq && sudo apt-get install -y -qq tmux)
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 

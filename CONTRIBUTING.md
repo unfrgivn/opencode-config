@@ -227,7 +227,7 @@ bun test
 
 ### Verify in OpenCode
 
-`bun run verify:release` packs the plugin, installs it with npm the way OpenCode does, then boots the OpenCode release matching the `@opencode/plugin` pin in a sandboxed home and checks that the plugin loads. OpenCode gives plugins its own `effect` and `@opencode/plugin` at runtime, so importing the package under plain Bun cannot catch an incompatible SDK; only the real host can.
+`bun run verify:release` packs the plugin, installs it with npm the way OpenCode does, then boots the OpenCode release matching the `@opencode/plugin` pin in a sandboxed home. It checks that the server plugin loads, then opens an empty session in the real TUI (on a private tmux server) and checks that the Fellowship sidebar renders. OpenCode gives plugins its own `effect`, `@opencode/plugin`, and OpenTUI at runtime, so importing the package under plain Bun cannot catch an incompatible SDK; only the real host can. The TUI check needs `tmux` (`brew install tmux`).
 
 - `OPENCODE_VERSION=latest bun run verify:release` tests the current build against a different OpenCode release.
 - `OPENCODE_BIN="$(command -v opencode)" bun run verify:release` uses an installed binary instead of downloading one.

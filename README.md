@@ -464,7 +464,7 @@ bun test
 # Type check
 bun run typecheck
 
-# Load the packed plugin in the matching OpenCode release
+# Load the packed plugin and its TUI sidebar in the matching OpenCode release (needs tmux)
 bun run verify:release
 
 # Move the OpenCode SDK pins to the latest release
