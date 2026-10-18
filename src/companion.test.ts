@@ -10,6 +10,8 @@ import {
   getCompanionArtBasePath,
   getBundledCompanionBinaryPath,
   getCompanionStatePath,
+  getCompanionPidPath,
+  getCompanionSpawnRecordPath,
   getDefaultCompanionBinaryPath,
   normalizeCompanionConfig,
   readCompanionState,
@@ -17,6 +19,7 @@ import {
 } from "./companion"
 import { getAgentNameTable } from "./agent-names"
 import { DEFAULT_CONFIG } from "./config"
+import { getPluginVersion } from "./status"
 
 describe("companion", () => {
   let testDir: string
@@ -634,6 +637,78 @@ describe("companion", () => {
       expect.objectContaining({ canonical: "explorer", display_name: "legolas", art_key: "lotr/legolas" }),
       expect.objectContaining({ canonical: "researcher", display_name: "radagast", art_key: "lotr/radagast" }),
     ])
+  })
+
+  it("replaces a companion started from an older binary and records the new spawn", async () => {
+    const bundledPath = getBundledCompanionBinaryPath()
+    expect(bundledPath).not.toBeNull()
+    const oldDir = path.join(testDir, "old-companion")
+    fs.cpSync(path.dirname(bundledPath ?? ""), oldDir, { recursive: true })
+    const oldBinaryPath = path.join(oldDir, "fellowship-companion")
+    const oldProcess = spawn(oldBinaryPath, [], {
+      detached: true,
+      env: { ...process.env, FELLOWSHIP_COMPANION_STATE_PATH: getCompanionStatePath(), FELLOWSHIP_COMPANION_DISABLE_OVERLAY: "1" },
+      stdio: "ignore",
+    })
+    spawnedProcesses.push(oldProcess)
+    await waitForFile(path.join(path.dirname(getCompanionStatePath()), "opencode-config.companion-runtime.json"))
+    fs.mkdirSync(path.dirname(getCompanionPidPath()), { recursive: true })
+    fs.writeFileSync(getCompanionPidPath(), String(oldProcess.pid))
+
+    const manager = new CompanionManager("replacement", "/repo", {
+      ...DEFAULT_CONFIG.companion,
+      enabled: true,
+      binaryPath: bundledPath ?? "",
+    })
+    manager.onLoad()
+
+    expect(await waitForExit(oldProcess, 5000)).toBe(0)
+    const newPid = Number(fs.readFileSync(getCompanionPidPath(), "utf8").trim())
+    expect(newPid).not.toBe(oldProcess.pid)
+    expect(JSON.parse(fs.readFileSync(getCompanionSpawnRecordPath(), "utf8"))).toMatchObject({
+      pid: newPid,
+      binaryPath: bundledPath,
+      pluginVersion: getPluginVersion(),
+    })
+    manager.onExit()
+    expect(fs.existsSync(getCompanionPidPath())).toBe(false)
+    expect(fs.existsSync(getCompanionSpawnRecordPath())).toBe(false)
+  })
+
+  it("does not signal a reused PID belonging to an unrelated process", async () => {
+    const unrelated = spawn("sleep", ["30"], { stdio: "ignore" })
+    spawnedProcesses.push(unrelated)
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    fs.mkdirSync(path.dirname(getCompanionPidPath()), { recursive: true })
+    fs.writeFileSync(getCompanionPidPath(), String(unrelated.pid))
+
+    const manager = new CompanionManager("reused-pid", "/repo", {
+      ...DEFAULT_CONFIG.companion,
+      enabled: true,
+      binaryPath: getBundledCompanionBinaryPath() ?? "",
+    })
+    manager.onLoad()
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    expect(unrelated.exitCode).toBeNull()
+    expect(unrelated.signalCode).toBeNull()
+    expect(Number(fs.readFileSync(getCompanionPidPath(), "utf8").trim())).not.toBe(unrelated.pid)
+    manager.onExit()
+  })
+
+  it("reuses a companion across manager loads", () => {
+    const config = { ...DEFAULT_CONFIG.companion, enabled: true, binaryPath: getBundledCompanionBinaryPath() ?? "" }
+    const first = new CompanionManager("first-manager", "/repo", config)
+    first.onLoad()
+    const firstPid = fs.readFileSync(getCompanionPidPath(), "utf8").trim()
+
+    const second = new CompanionManager("second-manager", "/repo", config)
+    second.onLoad()
+
+    expect(fs.readFileSync(getCompanionPidPath(), "utf8").trim()).toBe(firstPid)
+    second.onExit()
+    first.onExit()
+    expect(fs.existsSync(getCompanionPidPath())).toBe(false)
   })
 })
 

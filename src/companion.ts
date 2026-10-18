@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process"
+import { execFileSync, spawn, type ChildProcess } from "node:child_process"
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -8,6 +8,12 @@ import { logDebug, logWarn } from "./logging"
 import { moduleDir } from "./module-path"
 import { STORAGE_DIR_NAME } from "./constants"
 import { dataHomeDir } from "./paths"
+import {
+  decideCompanionLaunch,
+  parseCompanionSpawnRecord,
+  type CompanionSpawnRecord,
+} from "./companion-launch"
+import { getPluginVersion } from "./status"
 
 export type CompanionConfig = UserConfig["companion"]
 
@@ -71,6 +77,10 @@ export function getCompanionPidPath(): string {
   return path.join(getStorageDir(), "opencode-config.companion.pid")
 }
 
+export function getCompanionSpawnRecordPath(): string {
+  return path.join(getStorageDir(), "opencode-config.companion-spawn.json")
+}
+
 export function getDefaultCompanionBinaryPath(): string {
   const binaryName = os.platform() === "win32" ? "fellowship-companion.exe" : "fellowship-companion"
   return path.join(getStorageDir(), "bin", binaryName)
@@ -112,7 +122,7 @@ export function readCompanionState(): CompanionState {
     if (record.version !== 1 || !Array.isArray(record.sessions)) return fallback
     return parsed as CompanionState
   } catch (err) {
-    const code = err instanceof Error && "code" in err ? (err as NodeJS.ErrnoException).code : undefined
+    const code = err instanceof Error && "code" in err ? err.code : undefined
     if (code !== "ENOENT") logDebug(`Could not read companion state: ${err instanceof Error ? err.message : String(err)}`)
     return fallback
   }
@@ -212,7 +222,7 @@ function isProcessAlive(pid: number): boolean {
     process.kill(pid, 0)
     return true
   } catch (err) {
-    return (err as NodeJS.ErrnoException).code === "EPERM"
+    return err instanceof Error && "code" in err && err.code === "EPERM"
   }
 }
 
@@ -221,9 +231,60 @@ function readPidFile(filePath: string): number | null {
     const pid = Number(fs.readFileSync(filePath, "utf8").trim())
     return Number.isInteger(pid) && pid > 0 ? pid : null
   } catch (err) {
-    const code = err instanceof Error && "code" in err ? (err as NodeJS.ErrnoException).code : undefined
+    const code = err instanceof Error && "code" in err ? err.code : undefined
     if (code !== "ENOENT") logDebug(`Could not read companion PID file: ${err instanceof Error ? err.message : String(err)}`)
     return null
+  }
+}
+
+function readSpawnRecord(): CompanionSpawnRecord | null {
+  try {
+    const parsed: unknown = JSON.parse(fs.readFileSync(getCompanionSpawnRecordPath(), "utf8"))
+    return parseCompanionSpawnRecord(parsed)
+  } catch (err) {
+    const code = err instanceof Error && "code" in err ? err.code : undefined
+    if (code !== "ENOENT") logDebug(`Could not read companion spawn record: ${err instanceof Error ? err.message : String(err)}`)
+    return null
+  }
+}
+
+function readProcessCommand(pid: number): string | null {
+  if (process.platform === "win32") return null
+  try {
+    const command = execFileSync("ps", ["-ww", "-o", "command=", "-p", String(pid)], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 1000,
+    }).trim()
+    return command.length > 0 ? command : null
+  } catch (err) {
+    logDebug(`Could not inspect companion PID ${pid}: ${err instanceof Error ? err.message : String(err)}`)
+    return null
+  }
+}
+
+function writeSpawnRecord(record: CompanionSpawnRecord): void {
+  const filePath = getCompanionSpawnRecordPath()
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true })
+    fs.writeFileSync(tempPath, `${JSON.stringify(record)}\n`)
+    fs.renameSync(tempPath, filePath)
+  } catch (err) {
+    logWarn(`Could not write companion spawn record: ${err instanceof Error ? err.message : String(err)}`)
+    try {
+      fs.rmSync(tempPath, { force: true })
+    } catch (cleanupErr) {
+      logDebug(`Could not remove temporary companion spawn record: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`)
+    }
+  }
+}
+
+function removeSpawnRecord(): void {
+  try {
+    fs.rmSync(getCompanionSpawnRecordPath(), { force: true })
+  } catch (err) {
+    logDebug(`Could not remove companion spawn record: ${err instanceof Error ? err.message : String(err)}`)
   }
 }
 
@@ -376,14 +437,12 @@ export class CompanionManager {
   private spawnIfAvailable(): void {
     const pidPath = getCompanionPidPath()
     const existingPid = readPidFile(pidPath)
-    if (existingPid !== null && isProcessAlive(existingPid)) {
-      logDebug(`Companion already running with PID ${existingPid}`)
-      return
-    }
+    const livePid = existingPid !== null && isProcessAlive(existingPid) ? existingPid : null
 
-    if (existingPid !== null) {
+    if (existingPid !== null && livePid === null) {
       try {
         fs.rmSync(pidPath, { force: true })
+        removeSpawnRecord()
       } catch (err) {
         logDebug(`Could not remove stale companion PID file: ${err instanceof Error ? err.message : String(err)}`)
       }
@@ -394,6 +453,28 @@ export class CompanionManager {
       const expected = this.config.binaryPath?.trim() || `${getDefaultCompanionBinaryPath()} or bundled companion/bin/fellowship-companion`
       logWarn(`Companion is enabled but no binary exists at ${expected}`)
       return
+    }
+
+    const spawnRecord = readSpawnRecord()
+    const decision = decideCompanionLaunch({
+      livePid,
+      liveCommand: livePid === null ? null : readProcessCommand(livePid),
+      spawnRecord,
+      desiredBinaryPath: binaryPath,
+      pluginVersion: getPluginVersion(),
+      recordedBinaryExists: spawnRecord === null ? false : fs.existsSync(spawnRecord.binaryPath),
+    })
+    if (decision.action === "reuse") {
+      logDebug(`Companion already running with PID ${decision.pid}`)
+      return
+    }
+    if (decision.action === "replace") {
+      logDebug(`Replacing companion PID ${decision.pid}: ${decision.reason}`)
+      try {
+        process.kill(decision.pid, "SIGTERM")
+      } catch (err) {
+        logDebug(`Could not stop old companion PID ${decision.pid}: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
 
     try {
@@ -413,6 +494,7 @@ export class CompanionManager {
       this.companionProcess = child
       if (child.pid !== undefined) {
         fs.writeFileSync(pidPath, String(child.pid))
+        writeSpawnRecord({ pid: child.pid, binaryPath, pluginVersion: getPluginVersion() })
         this.spawnedCompanionPid = child.pid
       }
     } catch (err) {
@@ -429,6 +511,7 @@ export class CompanionManager {
     if (remainingSessions > 0) return false
     try {
       fs.rmSync(pidPath, { force: true })
+      removeSpawnRecord()
       return true
     } catch (err) {
       logDebug(`Could not remove companion PID file: ${err instanceof Error ? err.message : String(err)}`)
