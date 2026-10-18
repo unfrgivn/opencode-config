@@ -1,6 +1,6 @@
 {
   "name": "@unfrgivn/opencode-config",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "OpenCode plugin that bundles orchestration agents, skills, commands, instructions, and MCP configs",
   "repository": {
     "type": "git",
