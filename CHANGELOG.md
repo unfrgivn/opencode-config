@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.5](https://github.com/unfrgivn/opencode-config/compare/v3.0.4...v3.0.5) (2026-10-18)
+
+
+### Bug Fixes
+
+* keep the plugin active across location reloads ([#6](https://github.com/unfrgivn/opencode-config/issues/6)) ([bfc064c](https://github.com/unfrgivn/opencode-config/commit/bfc064c9d5cb8fbf81a8fe68e2de4c29c6a80a23))
+
 ## [3.0.4](https://github.com/unfrgivn/opencode-config/compare/v3.0.3...v3.0.4) (2026-10-18)
 
 
