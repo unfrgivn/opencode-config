@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenCode v2 Upgrade</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f8fafc; --card:#fff; --text:#172033; --muted:#526071; --line:#d9e2ec; --accent:#3451b2; --code:#111827; --codeText:#f9fafb; --warn:#fff7d6; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --card:#172033; --text:#f8fafc; --muted:#cbd5e1; --line:#334155; --accent:#9db4ff; --code:#020617; --codeText:#f8fafc; --warn:#3b2f12; } }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { max-width:900px; margin:auto; padding:36px 18px 64px; }
+    header, section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; margin:0 0 18px; }
+    h1 { font-size:clamp(2rem,5vw,3.4rem); line-height:1.05; margin:0 0 12px; letter-spacing:-.04em; }
+    h2 { font-size:1.45rem; margin:0 0 10px; }
+    p { margin:0 0 12px; }
+    ul, ol { margin:0; padding-left:1.35rem; }
+    li + li { margin-top:8px; }
+    a { color:var(--accent); }
+    code { background:color-mix(in srgb, var(--accent) 13%, transparent); border-radius:5px; padding:.1rem .3rem; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.94em; }
+    .copy-block { position:relative; margin:10px 0 14px; }
+    .copy-block pre { margin:0; }
+    pre { margin:10px 0 14px; padding:14px; overflow:auto; background:var(--code); color:var(--codeText); border-radius:12px; cursor:pointer; border:2px solid transparent; position:relative; }
+    pre:focus { outline:3px solid color-mix(in srgb, var(--accent) 65%, transparent); outline-offset:2px; }
+    pre:hover, pre:focus { border-color:color-mix(in srgb, var(--accent) 55%, transparent); }
+    pre code { background:transparent; color:inherit; padding:0; }
+    .copy-status { position:absolute; top:8px; right:8px; z-index:1; max-width:min(22rem, calc(100% - 16px)); padding:4px 8px; border-radius:999px; background:color-mix(in srgb, var(--accent) 85%, #000 15%); color:#fff; opacity:0; pointer-events:none; transform:translateY(-2px); transition:opacity 200ms ease, transform 200ms ease; font:0.85rem/1.35 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    .copy-status.is-visible { opacity:1; transform:translateY(0); }
+    .note { border-left:4px solid var(--accent); background:color-mix(in srgb, var(--accent) 9%, transparent); padding:12px; border-radius:10px; }
+    .table-wrap { overflow-x:auto; margin:10px 0 14px; }
+    table { width:100%; min-width:680px; border-collapse:collapse; }
+    th, td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-size:.9rem; }
+    blockquote { margin:10px 0 14px; padding:14px; border-left:4px solid var(--accent); background:color-mix(in srgb, var(--accent) 9%, transparent); border-radius:10px; font-weight:600; }
+    summary { cursor:pointer; font-weight:700; }
+    @media (max-width:640px) { main { padding-top:18px; } header, section { padding:18px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Upgrade to OpenCode v2</h1>
+    <p>OpenCode v1 and v2 can run side by side. Existing agents, commands, skills, instructions, and supported server configuration remain compatible; the plugin API, server API, and terminal client configuration are the intentional migration boundaries.</p>
+  </header>
+
+  <section>
+    <h2>1. Close OpenCode first</h2>
+    <p>Finish any active work, stop an existing v2 service if one is installed, then stop remaining OpenCode processes.</p>
+    <pre><code>(command -v opencode2 &gt;/dev/null &amp;&amp; opencode2 service stop || true) &amp;&amp; \
+(pkill -TERM -x 'opencode|opencode2' || true)</code></pre>
+    <p>Quit any separately managed background services or agents too, and let everything exit before backing up.</p>
+  </section>
+
+  <section>
+    <h2>2. Make a small backup</h2>
+    <p>Back up the default config, data, and state directories. This prints filenames as it copies, and may take a while for large history. Cache is re-downloadable, so it is excluded. If you use custom <code>XDG_*</code> paths or <code>OPENCODE_DB</code>, adapt the paths below.</p>
+    <pre><code>backup_dir="$HOME/opencode-pre-v2-$(date +%Y%m%d-%H%M%S)" &amp;&amp; \
+umask 077 &amp;&amp; \
+mkdir -p "$backup_dir/config" "$backup_dir/data" "$backup_dir/state" &amp;&amp; \
+( [ ! -d "$HOME/.config/opencode" ] || cp -av "$HOME/.config/opencode/." "$backup_dir/config/" ) &amp;&amp; \
+( [ ! -d "$HOME/.local/share/opencode" ] || cp -av "$HOME/.local/share/opencode/." "$backup_dir/data/" ) &amp;&amp; \
+( [ ! -d "$HOME/.local/state/opencode" ] || cp -av "$HOME/.local/state/opencode/." "$backup_dir/state/" ) &amp;&amp; \
+printf 'Backup written to %s\n' "$backup_dir"</code></pre>
+    <p class="note">The backup can contain credentials, so do not share or commit it. Keep it until v2 is proven. v1 and v2 share the default DB path, so rollback requires restoring pre-upgrade config and data, not only removing an alias.</p>
+  </section>
+
+  <section>
+    <h2>3. Install the v2 beta CLI</h2>
+    <p>Install only the OpenCode v2 beta CLI.</p>
+    <pre><code>npm install -g @opencode-ai/cli@beta</code></pre>
+    <p>After installation finishes, check the version. The reported beta version may look like <code>0.0.0-beta...</code>, not <code>2.x</code>.</p>
+    <pre><code>opencode2 --version</code></pre>
+    <p>Keep the Homebrew v1 install until the whole migration succeeds.</p>
+  </section>
+
+  <section>
+    <h2>4. Clean up v1 plugins</h2>
+    <p>Add the Fellowship plugin to your OpenCode configuration before launching v2.</p>
+    <pre><code>{
+  "plugins": ["@unfrgivn/opencode-config"]
+}</code></pre>
+    <p>V1 plugin implementations do not run in v2. Disable any remaining third-party plugins until each has a confirmed v2-compatible release.</p>
+    <ul>
+      <li>Add <code>@unfrgivn/opencode-config</code> to the <code>plugins</code> list in <code>opencode.json</code>.</li>
+      <li>Do not remove personal agent, command, skill, MCP, or instruction definitions; supported v1 definitions remain compatible.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>5. Launch v2 directly and wait</h2>
+    <p>Run the v2 binary once against your normal profile. Let migration and startup finish before checking anything.</p>
+    <pre><code>opencode2</code></pre>
+    <p>OpenCode v2 migrates supported global terminal settings into <code>~/.config/opencode/cli.json</code> and leaves <code>tui.json</code> unchanged for v1. Project-local terminal settings are not migrated because v2 terminal configuration is global.</p>
+    <p>Review the generated <code>cli.json</code> for your terminal preferences. Keep the Fellowship package in the <code>plugins</code> list in <code>opencode.json</code>.</p>
+  </section>
+
+  <section>
+    <h2>6. Verify the service and Fellowship</h2>
+    <p>V2 uses a shared background service. An updated client can reconnect to a service started by an older beta, so compare the client version with the API health response:</p>
+    <pre><code>opencode2 --version &amp;&amp; \
+opencode2 service status &amp;&amp; \
+opencode2 api get /api/health</code></pre>
+    <p>If the health response reports a different version, restart the service and check again:</p>
+    <pre><code>opencode2 service restart &amp;&amp; \
+opencode2 api get /api/health</code></pre>
+    <p>Inside v2, run <code>/fellowship-status</code>. The package is loaded from your <code>opencode.json</code> plugin list.</p>
+    <ul>
+      <li>Status is recent for this startup.</li>
+      <li>The loaded <code>@unfrgivn/opencode-config</code> version matches the one you installed.</li>
+      <li>If <code>/fellowship-status</code> is missing, inspect your plugin configuration.</li>
+    </ul>
+    <p>Then verify package plugins from the CLI:</p>
+    <pre><code>opencode2 plugin list &amp;&amp; \
+opencode2 plugin check</code></pre>
+  </section>
+
+  <section>
+    <h2>7. Alias after success, optional</h2>
+    <p>After v2 starts cleanly, the service version matches, and Fellowship status is correct, optionally make <code>opencode</code> launch <code>opencode2</code>:</p>
+    <pre><code>printf '\n# Make opencode default to opencode2\nalias opencode="opencode2"\n' &gt;&gt; ~/.wpuserrc &amp;&amp; \
+source ~/.zshrc</code></pre>
+  </section>
+
+  <section>
+    <h2>8. Keep v1 until migration succeeds</h2>
+    <p>Do not uninstall the Homebrew v1 package until v2 has migrated, loaded Fellowship, and completed a normal work session. While both versions remain available, keep shared server configuration in supported v1 syntax; v1 may not understand a file converted to native v2 fields. If rollback is needed, quit all OpenCode processes and restore the backup from step 2 before using v1 again.</p>
+  </section>
+
+  <section>
+    <h2>9. Ask OpenCode to finish the config migration</h2>
+    <p>After v2 and Fellowship are working normally, start <code>opencode2</code> and send this prompt:</p>
+    <blockquote>Migrate my OpenCode configuration, including file-based definitions, from the v1 format to the native v2 format. Preserve its behavior and all unrelated settings.</blockquote>
+    <p>Review the resulting diff before accepting it. Once shared configuration uses native v2 fields, do not launch v1 against it; restore the backup first if you need to roll back.</p>
+  </section>
+
+  <section>
+    <h2>Local files created or changed</h2>
+    <p>OpenCode v2 creates or changes several files outside the Fellowship plugin repository:</p>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Local migration files">
+    <table>
+      <thead><tr><th>Path</th><th>Purpose</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><code>~/.config/opencode/cli.json</code></td><td>Global v2 terminal preferences and CLI-only plugins.</td><td>Review and keep.</td></tr>
+        <tr><td><code>~/.config/opencode/opencode.json(c)</code></td><td>Shared v1/v2 server and project configuration.</td><td>Preserve unrelated settings. Remove or disable only incompatible plugins and accidental duplicate Fellowship entries.</td></tr>
+        <tr><td><code>~/.config/opencode/tui.json(c)</code></td><td>Legacy v1 terminal configuration.</td><td>Keep while v1 remains installed. V2 does not read it.</td></tr>
+        <tr><td><code>~/.config/opencode/service.json</code></td><td>Private service configuration and authentication.</td><td>Back up but do not commit, share, or edit by hand.</td></tr>
+        <tr><td><code>~/.local/state/opencode/service.json</code></td><td>Registration for the running shared service.</td><td>Do not edit or delete. Use <code>opencode2 service</code> commands.</td></tr>
+        <tr><td><code>~/.local/share/opencode/opencode.db</code></td><td>Session and application data shared by v1 and v2.</td><td>Back up before migration; do not edit.</td></tr>
+        <tr><td><code>~/.cache/opencode/packages</code></td><td>Downloaded package plugins.</td><td>Do not commit. It can be rebuilt if troubleshooting requires it.</td></tr>
+        <tr><td>Generated Fellowship skill, plugin, schema, and MCP paths</td><td>Assets synchronized from the installed package.</td><td>Do not edit generated remote assets. Keep personal overrides separate.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Troubleshooting, only if needed</h2>
+    <details>
+      <summary>Plugins failed to load</summary>
+      <p>Select the failed plugin and press Enter to view its error. Run <code>opencode2 plugin list</code> and <code>opencode2 plugin check</code>, remove leftover <code>_remote_opencode-config_*</code> files using step 3, then restart the service.</p>
+      <p>If a third-party plugin still fails, disable it until it has a v2 release. Plugin API incompatibilities need a compatible release or configuration update, not repeated cache deletion.</p>
+    </details>
+    <details>
+      <summary>The CLI and service report different versions</summary>
+      <p>Restart the shared service with <code>opencode2 service restart</code>. If it still reports the old version, capture <code>opencode2 service status</code>, the <code>/api/health</code> response, and relevant <code>role=server</code> lines from <code>~/.local/share/opencode/log/opencode.log</code>.</p>
+    </details>
+    <details>
+      <summary>A saved integration credential fails</summary>
+      <p>Reconnect the integration through OpenCode. Remove a credential only after confirming it is obsolete, and use the OpenCode UI or API rather than editing credential files or the database.</p>
+    </details>
+    <details>
+      <summary>Fellowship status is stale or the package cache looks wrong</summary>
+      <p>Quit OpenCode and its background service, then clear the package cache. Packages will be downloaded again on startup.</p>
+      <pre><code>rm -rf "$HOME/.cache/opencode/packages/"*</code></pre>
+      <p>Start <code>opencode2</code> again and check that <code>/fellowship-status</code> is fresh. If the loaded version is still wrong, open an issue at <a href="https://github.com/unfrgivn/opencode-config/issues">github.com/unfrgivn/opencode-config/issues</a> with the loaded version and status timestamp.</p>
+    </details>
+  </section>
+
+  <section>
+    <h2>References</h2>
+    <ul>
+      <li><a href="https://opencode.ai/v2/docs/">OpenCode v2 beta docs</a></li>
+      <li><a href="https://opencode.ai/v2/docs/migrate-v1/">OpenCode v1 to v2 migration guide</a></li>
+      <li><a href="https://opencode.ai/v2/docs/cli/">OpenCode v2 CLI guide</a></li>
+      <li><a href="https://opencode.ai/v2/docs/cli/config/">OpenCode v2 CLI configuration</a></li>
+      <li><a href="https://opencode.ai/v2/docs/plugins/">OpenCode v2 plugin configuration</a></li>
+      <li><a href="https://opencode.ai/v2/docs/troubleshooting/">OpenCode v2 troubleshooting</a></li>
+    </ul>
+  </section>
+</main>
+<script>
+(() => {
+  const blocks = document.querySelectorAll('pre');
+
+  const fallbackCopy = (text) => {
+    const focused = document.activeElement;
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    let copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } finally {
+      document.body.removeChild(textarea);
+      if (focused instanceof HTMLElement) focused.focus({ preventScroll: true });
+    }
+
+    return copied;
+  };
+
+  const copyText = async (text) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (error) {
+        return fallbackCopy(text);
+      }
+    }
+
+    return fallbackCopy(text);
+  };
+
+  blocks.forEach((block, index) => {
+    const code = block.querySelector('code');
+    if (!code) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'copy-block';
+    block.before(wrapper);
+    wrapper.append(block);
+
+    const status = document.createElement('span');
+    status.className = 'copy-status';
+    status.setAttribute('aria-live', 'polite');
+    wrapper.append(status);
+
+    let hideStatusTimer;
+    let clearStatusTimer;
+
+    block.tabIndex = 0;
+    block.setAttribute('role', 'button');
+    block.setAttribute('aria-label', `Copy code block ${index + 1}: ${code.textContent.split('\n')[0]}`);
+
+    const setStatus = (message, duration = 1000) => {
+      window.clearTimeout(hideStatusTimer);
+      window.clearTimeout(clearStatusTimer);
+      status.textContent = message;
+      status.classList.add('is-visible');
+
+      hideStatusTimer = window.setTimeout(() => {
+        status.classList.remove('is-visible');
+        clearStatusTimer = window.setTimeout(() => {
+          status.textContent = '';
+        }, 200);
+      }, duration);
+    };
+
+    const runCopy = async () => {
+      const text = code.textContent;
+      try {
+        if (await copyText(text)) {
+          setStatus('copied');
+          return;
+        }
+      } catch (error) {
+        // Fall through to explicit failure feedback.
+      }
+
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(code);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      setStatus('Copy failed. Code selected, press Command+C or Ctrl+C.', 5000);
+    };
+
+    block.addEventListener('click', runCopy);
+    block.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      runCopy();
+    });
+  });
+})();
+</script>
+</body>
+</html>

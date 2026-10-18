@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "themes": {
+    "descriptive": {
+      "orchestrator": "descriptive/orchestrator.svg",
+      "explorer": "descriptive/explorer.svg",
+      "researcher": "descriptive/researcher.svg",
+      "planner": "descriptive/planner.svg",
+      "implementer": "descriptive/implementer.svg",
+      "architect": "descriptive/architect.svg",
+      "analyst": "descriptive/analyst.svg",
+      "tdd": "descriptive/tdd.svg"
+    },
+    "lotr": {
+      "gandalf": "lotr/gandalf.svg",
+      "legolas": "lotr/legolas.svg",
+      "radagast": "lotr/radagast.svg",
+      "treebeard": "lotr/treebeard.svg",
+      "celebrimbor": "lotr/celebrimbor.svg",
+      "elrond": "lotr/elrond.svg",
+      "galadriel": "lotr/galadriel.svg",
+      "aragorn": "lotr/aragorn.svg"
+    },
+    "common": {
+      "intro": "common/intro.svg",
+      "input": "common/input.svg",
+      "unknown": "common/unknown.svg"
+    }
+  }
+}

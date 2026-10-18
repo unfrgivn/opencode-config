@@ -1,0 +1,287 @@
+#!/usr/bin/osascript -l JavaScript
+
+ObjC.import("Cocoa")
+ObjC.import("Foundation")
+
+const DEFAULT_POLL_SECONDS = 0.25
+const DEFAULT_MAX_POLLS = 14400
+const SPRITE_FRAME_COUNT = 4
+const SPRITE_FRAME_WIDTH = 128
+const SPRITE_FRAME_HEIGHT = 160
+const STACK_GAP = 10
+const PROCESS_NAME = "opencode-companion-overlay"
+
+function js(value) {
+  return ObjC.unwrap(value)
+}
+
+function readText(filePath) {
+  const data = $.NSData.alloc.initWithContentsOfFile(filePath)
+  if (!data || data.isNil()) return null
+  try {
+    const text = $.NSString.alloc.initWithDataEncoding(data, $.NSUTF8StringEncoding)
+    if (!text || text.isNil()) return null
+    try {
+      return js(text)
+    } finally {
+      text.release
+    }
+  } finally {
+    data.release
+  }
+}
+
+function readJson(filePath) {
+  const text = readText(filePath)
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch (_err) {
+    return null
+  }
+}
+
+function maximumPolls() {
+  const environment = $.NSProcessInfo.processInfo.environment
+  const configuredText = environment.objectForKey("FELLOWSHIP_COMPANION_OVERLAY_MAX_POLLS")
+  if (!configuredText || configuredText.isNil()) return DEFAULT_MAX_POLLS
+  const configured = Number(js(configuredText))
+  return Number.isFinite(configured) && Number.isInteger(configured) && configured > 0
+    ? configured
+    : DEFAULT_MAX_POLLS
+}
+
+function appendLog(filePath, message) {
+  const line = `${new Date().toISOString()} overlay ${message}\n`
+  const manager = $.NSFileManager.defaultManager
+  const dir = $(filePath).stringByDeletingLastPathComponent
+  manager.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(dir, true, $(), null)
+  if (!manager.fileExistsAtPath(filePath)) {
+    $(line).writeToFileAtomicallyEncodingError(filePath, true, $.NSUTF8StringEncoding, null)
+    return
+  }
+  const existing = readText(filePath) || ""
+  $(existing + line).writeToFileAtomicallyEncodingError(filePath, true, $.NSUTF8StringEncoding, null)
+}
+
+function sizeConfig(config) {
+  const size = config && typeof config.size === "string" ? config.size : "medium"
+  switch (size) {
+    case "small":
+      return { width: 128, height: 160, imageWidth: 128, imageHeight: 160 }
+    case "large":
+      return { width: 224, height: 280, imageWidth: 224, imageHeight: 280 }
+    default:
+      return { width: 176, height: 220, imageWidth: 176, imageHeight: 220 }
+  }
+}
+
+function spriteFrameConfig(agent) {
+  const count = Number.isFinite(agent && agent.art_frame_count) ? Math.max(1, Math.floor(agent.art_frame_count)) : SPRITE_FRAME_COUNT
+  const width = Number.isFinite(agent && agent.art_frame_width) ? Math.max(1, Math.floor(agent.art_frame_width)) : SPRITE_FRAME_WIDTH
+  const height = Number.isFinite(agent && agent.art_frame_height) ? Math.max(1, Math.floor(agent.art_frame_height)) : SPRITE_FRAME_HEIGHT
+  return { count, width, height }
+}
+
+function visibleAgents(summary) {
+  if (!summary || summary.status === "idle") return []
+  const detailedAgents = summary && Array.isArray(summary.active_agent_details)
+    ? dedupeAgents(summary.active_agent_details)
+    : []
+  const fallbackAgents = summary && Array.isArray(summary.active_agents)
+    ? dedupeAgents(summary.active_agents.map((name) => fallbackAgent(String(name))))
+    : []
+  const activeAgents = detailedAgents.length > 0 ? detailedAgents : fallbackAgents
+  if (summary.status === "waiting-input") return dedupeAgents([fallbackAgent("input")].concat(activeAgents))
+  return activeAgents
+}
+
+function fallbackAgent(name) {
+  return { display_name: name, art_path: null, canonical: null, role: null }
+}
+
+function dedupeAgents(agents) {
+  const seen = {}
+  const result = []
+  for (const agent of agents) {
+    if (!agent || typeof agent !== "object") continue
+    const name = typeof agent.display_name === "string" && agent.display_name.length > 0 ? agent.display_name : agent.art_key
+    if (!name || name === "intro" || seen[name]) continue
+    seen[name] = true
+    result.push(agent)
+  }
+  return result
+}
+
+function frameForPosition(config, size, index) {
+  const screen = $.NSScreen.mainScreen.visibleFrame
+  const margin = 24
+  const position = config && typeof config.position === "string" ? config.position : "bottom-right"
+  const right = position.endsWith("right")
+  const top = position.startsWith("top")
+  const stackOffset = index * (size.height + STACK_GAP)
+  const x = right ? screen.origin.x + screen.size.width - size.width - margin : screen.origin.x + margin
+  const y = top
+    ? screen.origin.y + screen.size.height - size.height - margin - stackOffset
+    : screen.origin.y + margin + stackOffset
+  return $.NSMakeRect(x, y, size.width, size.height)
+}
+
+function summarizeState(state) {
+  const sessions = state && Array.isArray(state.sessions) ? state.sessions : []
+  const statuses = sessions.map((session) => (session && typeof session.status === "string" ? session.status : "idle"))
+  const status = statuses.includes("waiting-input") ? "waiting-input" : statuses.includes("busy") ? "busy" : "idle"
+  const activeAgentDetails = []
+  const activeAgents = []
+  for (const session of sessions) {
+    if (session && Array.isArray(session.active_agent_details)) activeAgentDetails.push.apply(activeAgentDetails, session.active_agent_details)
+    if (session && Array.isArray(session.active_agents)) activeAgents.push.apply(activeAgents, session.active_agents)
+  }
+  const visibleAgentDetails = dedupeAgents(activeAgentDetails)
+  const visibleAgentNames = activeAgents.filter((name) => typeof name === "string" && name !== "intro")
+  return {
+    status,
+    session_count: sessions.length,
+    active_agents: visibleAgentNames,
+    active_agent_details: visibleAgentDetails,
+  }
+}
+
+function run(argv) {
+  const args = argv[0] === PROCESS_NAME ? argv.slice(1) : argv
+  const statePath = args[0]
+  const logPath = args[1]
+  if (!statePath || !logPath) return
+
+  try {
+    $.NSProcessInfo.processInfo.setProcessName($(PROCESS_NAME))
+  } catch (_err) {
+    appendLog(logPath, `could not set process name ${PROCESS_NAME}`)
+  }
+
+  const app = $.NSApplication.sharedApplication
+  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory)
+
+  let state = readJson(statePath) || { sessions: [], config: { enabled: true } }
+  let config = state.config || {}
+  let size = sizeConfig(config)
+
+  const tiles = []
+  const imageCache = {}
+
+  function imageForPath(artPath) {
+    if (typeof artPath !== "string" || artPath.length === 0) return null
+    if (imageCache[artPath]) return imageCache[artPath]
+    const image = $.NSImage.alloc.initWithContentsOfFile(artPath)
+    if (!image || image.isNil()) return null
+    imageCache[artPath] = image
+    return image
+  }
+
+  function createTile(index) {
+    const window = $.NSWindow.alloc.initWithContentRectStyleMaskBackingDefer(
+      frameForPosition(config, size, index),
+      $.NSWindowStyleMaskBorderless,
+      $.NSBackingStoreBuffered,
+      false
+    )
+    window.setLevel($.NSFloatingWindowLevel)
+    window.setReleasedWhenClosed(false)
+    window.setOpaque(false)
+    window.setBackgroundColor($.NSColor.clearColor)
+    window.setHasShadow(false)
+    window.setIgnoresMouseEvents(true)
+
+    const content = window.contentView
+    content.setWantsLayer(true)
+    content.layer.setMasksToBounds(true)
+    const imageView = $.NSImageView.alloc.initWithFrame($.NSMakeRect(0, 0, size.imageWidth, size.imageHeight))
+    imageView.setImageScaling($.NSImageScaleProportionallyUpOrDown)
+    content.addSubview(imageView)
+    return { window, imageView, currentArtPath: "", lastKey: "", lastLogKey: "" }
+  }
+
+  function tileAt(index) {
+    while (tiles.length <= index) tiles.push(createTile(tiles.length))
+    return tiles[index]
+  }
+
+  function hideTile(tile, index, status) {
+    if (tile.lastKey !== "hidden") {
+      tile.window.orderOut(null)
+      appendLog(logPath, `hidden tile=${index} status=${status}`)
+      tile.lastKey = "hidden"
+      tile.lastLogKey = "hidden"
+    }
+  }
+
+  function update() {
+    state = readJson(statePath) || state
+    config = state.config || config
+    const summary = summarizeState(state)
+    const agents = visibleAgents(summary)
+    const nextSize = sizeConfig(config)
+    if (nextSize.width !== size.width || nextSize.height !== size.height || nextSize.imageWidth !== size.imageWidth || nextSize.imageHeight !== size.imageHeight) {
+      size = nextSize
+      for (let index = 0; index < tiles.length; index += 1) {
+        tiles[index].imageView.setFrame($.NSMakeRect(0, 0, size.imageWidth, size.imageHeight))
+        tiles[index].lastKey = ""
+      }
+    }
+
+    if (agents.length === 0) {
+      for (let index = 0; index < tiles.length; index += 1) hideTile(tiles[index], index, summary.status)
+      return false
+    }
+
+    for (let index = 0; index < agents.length; index += 1) {
+      const agent = agents[index]
+      const tile = tileAt(index)
+      const spriteFrame = spriteFrameConfig(agent)
+      const frameIndex = Math.floor(Date.now() / 250) % spriteFrame.count
+      const frame = frameForPosition(config, size, index)
+      const key = JSON.stringify({ agent: agent.display_name, art: agent.art_path, status: summary.status, position: config.position, size: config.size, index })
+      if (typeof agent.art_path === "string" && agent.art_path !== tile.currentArtPath) {
+        const image = imageForPath(agent.art_path)
+        if (image) tile.imageView.setImage(image)
+        tile.currentArtPath = agent.art_path
+      }
+      tile.imageView.setFrame($.NSMakeRect(-frameIndex * size.imageWidth, 0, size.imageWidth * spriteFrame.count, size.imageHeight))
+      tile.window.setFrameDisplay(frame, false)
+      if (key !== tile.lastKey) {
+        tile.lastKey = key
+        tile.window.orderFront(null)
+      }
+      const logKey = `${agent.display_name || "unknown"}:${summary.status}:${index}`
+      if (logKey !== tile.lastLogKey) {
+        appendLog(logPath, `showing tile=${index} ${agent.display_name || "unknown"} status=${summary.status}`)
+        tile.lastLogKey = logKey
+      }
+    }
+
+    for (let index = agents.length; index < tiles.length; index += 1) {
+      hideTile(tiles[index], index, summary.status)
+    }
+    return true
+  }
+
+  appendLog(logPath, `tile overlay started state=${statePath}`)
+
+  const runLoop = $.NSRunLoop.currentRunLoop
+  const maxPolls = maximumPolls()
+  let polls = 0
+  while (polls < maxPolls) {
+    if (!update()) break
+    const date = $.NSDate.alloc.initWithTimeIntervalSinceNow(DEFAULT_POLL_SECONDS)
+    try {
+      runLoop.runUntilDate(date)
+    } finally {
+      date.release
+    }
+    polls += 1
+  }
+  for (const tile of tiles) {
+    tile.window.orderOut(null)
+  }
+  appendLog(logPath, polls < maxPolls ? "idle, exiting" : `recycling polls=${polls}`)
+}

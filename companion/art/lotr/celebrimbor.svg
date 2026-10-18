@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 160" width="512" height="160" shape-rendering="crispEdges"><g transform="translate(0 0)">
+    <rect width="128" height="160" rx="0" fill="#231312"/>
+    <rect x="4" y="4" width="120" height="152" fill="#3b1d1a"/>
+    <rect x="8" y="8" width="112" height="144" fill="#231312"/>
+    <rect x="12" y="12" width="104" height="108" fill="#3b1d1a"/>
+    <g transform="translate(0 0)">
+    <rect x="49" y="22" width="30" height="8" fill="#fecaca"/><rect x="55" y="17" width="5" height="7" fill="#fbbf24"/><rect x="68" y="17" width="5" height="7" fill="#fbbf24"/>
+    <rect x="50" y="33" width="28" height="20" fill="#d09357"/>
+    <rect x="46" y="29" width="36" height="10" fill="#7f1d1d"/>
+    <rect x="46" y="39" width="36" height="6" fill="#fecaca"/>
+    <rect x="54" y="41" width="6" height="6" fill="#06111f"/>
+    <rect x="70" y="41" width="6" height="6" fill="#06111f"/>
+    <rect x="58" y="51" width="14" height="4" fill="#7f1d1d"/>
+    <rect x="42" y="55" width="44" height="42" fill="#dc2626"/>
+    <rect x="48" y="58" width="32" height="30" fill="#7f1d1d"/><rect x="55" y="63" width="18" height="8" fill="#fca5a5"/>
+    <rect x="48" y="61" width="32" height="30" fill="#fecaca" opacity="0.92"/>
+    <rect x="34" y="60" width="10" height="28" fill="#7f1d1d"/>
+    <rect x="84" y="60" width="10" height="28" fill="#7f1d1d"/>
+    <rect x="48" y="97" width="12" height="18" fill="#7f1d1d"/>
+    <rect x="68" y="97" width="12" height="18" fill="#7f1d1d"/>
+    <rect x="44" y="113" width="18" height="5" fill="#fbbf24"/>
+    <rect x="66" y="113" width="18" height="5" fill="#fbbf24"/>
+    <rect x="58" y="76" width="12" height="12" fill="#fbbf24"/>
+  </g><g transform="translate(0 0)"><rect x="91" y="42" width="6" height="60" fill="#fbbf24"/><rect x="82" y="33" width="24" height="12" fill="#fecaca"/><rect x="78" y="37" width="32" height="8" fill="#fca5a5"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#fca5a5"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#fecaca">CELEBRIMBOR</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#fca5a5">FORGES CHANGES</text>
+  </g><g transform="translate(128 0)">
+    <rect width="128" height="160" rx="0" fill="#231312"/>
+    <rect x="4" y="4" width="120" height="152" fill="#3b1d1a"/>
+    <rect x="8" y="8" width="112" height="144" fill="#231312"/>
+    <rect x="12" y="12" width="104" height="108" fill="#3b1d1a"/>
+    <g transform="translate(0 -2)">
+    <rect x="49" y="22" width="30" height="8" fill="#fecaca"/><rect x="55" y="17" width="5" height="7" fill="#fbbf24"/><rect x="68" y="17" width="5" height="7" fill="#fbbf24"/>
+    <rect x="50" y="33" width="28" height="20" fill="#d09357"/>
+    <rect x="46" y="29" width="36" height="10" fill="#7f1d1d"/>
+    <rect x="46" y="39" width="36" height="6" fill="#fecaca"/>
+    <rect x="54" y="41" width="6" height="6" fill="#06111f"/>
+    <rect x="70" y="41" width="6" height="6" fill="#06111f"/>
+    <rect x="58" y="51" width="14" height="4" fill="#7f1d1d"/>
+    <rect x="42" y="55" width="44" height="42" fill="#dc2626"/>
+    <rect x="48" y="58" width="32" height="30" fill="#7f1d1d"/><rect x="55" y="63" width="18" height="8" fill="#fca5a5"/>
+    <rect x="48" y="61" width="32" height="30" fill="#fecaca" opacity="0.92"/>
+    <rect x="34" y="60" width="10" height="28" fill="#7f1d1d"/>
+    <rect x="84" y="57" width="10" height="28" fill="#7f1d1d"/>
+    <rect x="48" y="97" width="12" height="18" fill="#7f1d1d"/>
+    <rect x="68" y="97" width="12" height="18" fill="#7f1d1d"/>
+    <rect x="44" y="113" width="18" height="5" fill="#fbbf24"/>
+    <rect x="66" y="113" width="18" height="5" fill="#fbbf24"/>
+    <rect x="58" y="76" width="12" height="12" fill="#fbbf24"/>
+  </g><g transform="translate(0 -2)"><rect x="91" y="42" width="6" height="60" fill="#fbbf24"/><rect x="82" y="33" width="24" height="12" fill="#fecaca"/><rect x="78" y="37" width="32" height="8" fill="#fca5a5"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#fca5a5"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#fecaca">CELEBRIMBOR</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#fca5a5">FORGES CHANGES</text>
+  </g><g transform="translate(256 0)">
+    <rect width="128" height="160" rx="0" fill="#231312"/>
+    <rect x="4" y="4" width="120" height="152" fill="#3b1d1a"/>
+    <rect x="8" y="8" width="112" height="144" fill="#231312"/>
+    <rect x="12" y="12" width="104" height="108" fill="#3b1d1a"/>
+    <g transform="translate(0 0)">
+    <rect x="49" y="22" width="30" height="8" fill="#fecaca"/><rect x="55" y="17" width="5" height="7" fill="#fbbf24"/><rect x="68" y="17" width="5" height="7" fill="#fbbf24"/>
+    <rect x="50" y="33" width="28" height="20" fill="#d09357"/>
+    <rect x="46" y="29" width="36" height="10" fill="#7f1d1d"/>
+    <rect x="46" y="39" width="36" height="6" fill="#fecaca"/>
+    <rect x="54" y="41" width="6" height="6" fill="#06111f"/>
+    <rect x="70" y="41" width="6" height="6" fill="#06111f"/>
+    <rect x="58" y="51" width="14" height="4" fill="#7f1d1d"/>
+    <rect x="42" y="55" width="44" height="42" fill="#dc2626"/>
+    <rect x="48" y="58" width="32" height="30" fill="#7f1d1d"/><rect x="55" y="63" width="18" height="8" fill="#fca5a5"/>
+    <rect x="48" y="61" width="32" height="30" fill="#fecaca" opacity="0.92"/>
+    <rect x="34" y="60" width="10" height="28" fill="#7f1d1d"/>
+    <rect x="84" y="60" width="10" height="28" fill="#7f1d1d"/>
+    <rect x="48" y="97" width="12" height="18" fill="#7f1d1d"/>
+    <rect x="68" y="97" width="12" height="18" fill="#7f1d1d"/>
+    <rect x="44" y="113" width="18" height="5" fill="#fbbf24"/>
+    <rect x="66" y="113" width="18" height="5" fill="#fbbf24"/>
+    <rect x="58" y="76" width="12" height="12" fill="#fbbf24"/>
+  </g><g transform="translate(0 0)"><rect x="91" y="42" width="6" height="60" fill="#fbbf24"/><rect x="82" y="33" width="24" height="12" fill="#fecaca"/><rect x="78" y="37" width="32" height="8" fill="#fca5a5"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#fca5a5"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#fecaca">CELEBRIMBOR</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#fca5a5">FORGES CHANGES</text>
+  </g><g transform="translate(384 0)">
+    <rect width="128" height="160" rx="0" fill="#231312"/>
+    <rect x="4" y="4" width="120" height="152" fill="#3b1d1a"/>
+    <rect x="8" y="8" width="112" height="144" fill="#231312"/>
+    <rect x="12" y="12" width="104" height="108" fill="#3b1d1a"/>
+    <g transform="translate(0 -2)">
+    <rect x="49" y="22" width="30" height="8" fill="#fecaca"/><rect x="55" y="17" width="5" height="7" fill="#fbbf24"/><rect x="68" y="17" width="5" height="7" fill="#fbbf24"/>
+    <rect x="50" y="33" width="28" height="20" fill="#d09357"/>
+    <rect x="46" y="29" width="36" height="10" fill="#7f1d1d"/>
+    <rect x="46" y="39" width="36" height="6" fill="#fecaca"/>
+    <rect x="54" y="41" width="6" height="6" fill="#06111f"/>
+    <rect x="70" y="41" width="6" height="6" fill="#06111f"/>
+    <rect x="58" y="51" width="14" height="4" fill="#7f1d1d"/>
+    <rect x="42" y="55" width="44" height="42" fill="#dc2626"/>
+    <rect x="48" y="58" width="32" height="30" fill="#7f1d1d"/><rect x="55" y="63" width="18" height="8" fill="#fca5a5"/>
+    <rect x="48" y="61" width="32" height="30" fill="#fecaca" opacity="0.92"/>
+    <rect x="34" y="60" width="10" height="28" fill="#7f1d1d"/>
+    <rect x="84" y="63" width="10" height="28" fill="#7f1d1d"/>
+    <rect x="48" y="97" width="12" height="18" fill="#7f1d1d"/>
+    <rect x="68" y="97" width="12" height="18" fill="#7f1d1d"/>
+    <rect x="44" y="113" width="18" height="5" fill="#fbbf24"/>
+    <rect x="66" y="113" width="18" height="5" fill="#fbbf24"/>
+    <rect x="58" y="76" width="12" height="12" fill="#fbbf24"/>
+  </g><g transform="translate(0 -2)"><rect x="91" y="42" width="6" height="60" fill="#fbbf24"/><rect x="82" y="33" width="24" height="12" fill="#fecaca"/><rect x="78" y="37" width="32" height="8" fill="#fca5a5"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#fca5a5"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#fecaca">CELEBRIMBOR</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#fca5a5">FORGES CHANGES</text>
+  </g></svg>

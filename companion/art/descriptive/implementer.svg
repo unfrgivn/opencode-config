@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 160" width="512" height="160" shape-rendering="crispEdges"><g transform="translate(0 0)">
+    <rect width="128" height="160" rx="0" fill="#201513"/>
+    <rect x="4" y="4" width="120" height="152" fill="#3a211c"/>
+    <rect x="8" y="8" width="112" height="144" fill="#201513"/>
+    <rect x="12" y="12" width="104" height="108" fill="#3a211c"/>
+    <g transform="translate(0 0)">
+    <rect x="28" y="30" width="72" height="72" fill="#7f1d1d"/>
+    <rect x="32" y="34" width="64" height="64" fill="#201513"/>
+    <rect x="36" y="38" width="56" height="56" fill="#3a211c"/>
+  <rect x="47" y="78" width="40" height="9" fill="#7f1d1d"/><rect x="55" y="46" width="8" height="38" fill="#fbbf24"/><rect x="45" y="39" width="34" height="12" fill="#fecaca"/><rect x="41" y="43" width="42" height="8" fill="#fb923c"/><rect x="70" y="62" width="18" height="18" fill="#fbbf24"/><rect x="74" y="66" width="10" height="10" fill="#201513"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#fb923c"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#fecaca">IMPLEMENTER</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#fb923c">SHIPS THE FIX</text>
+  </g><g transform="translate(128 0)">
+    <rect width="128" height="160" rx="0" fill="#201513"/>
+    <rect x="4" y="4" width="120" height="152" fill="#3a211c"/>
+    <rect x="8" y="8" width="112" height="144" fill="#201513"/>
+    <rect x="12" y="12" width="104" height="108" fill="#3a211c"/>
+    <g transform="translate(0 -2)">
+    <rect x="28" y="30" width="72" height="72" fill="#7f1d1d"/>
+    <rect x="32" y="34" width="64" height="64" fill="#201513"/>
+    <rect x="36" y="38" width="56" height="56" fill="#3a211c"/>
+  <rect x="47" y="78" width="40" height="9" fill="#7f1d1d"/><rect x="55" y="46" width="8" height="38" fill="#fbbf24"/><rect x="45" y="39" width="34" height="12" fill="#fecaca"/><rect x="41" y="43" width="42" height="8" fill="#fb923c"/><rect x="70" y="62" width="18" height="18" fill="#fed7aa"/><rect x="74" y="66" width="10" height="10" fill="#201513"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#fb923c"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#fecaca">IMPLEMENTER</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#fb923c">SHIPS THE FIX</text>
+  </g><g transform="translate(256 0)">
+    <rect width="128" height="160" rx="0" fill="#201513"/>
+    <rect x="4" y="4" width="120" height="152" fill="#3a211c"/>
+    <rect x="8" y="8" width="112" height="144" fill="#201513"/>
+    <rect x="12" y="12" width="104" height="108" fill="#3a211c"/>
+    <g transform="translate(0 0)">
+    <rect x="28" y="30" width="72" height="72" fill="#7f1d1d"/>
+    <rect x="32" y="34" width="64" height="64" fill="#201513"/>
+    <rect x="36" y="38" width="56" height="56" fill="#3a211c"/>
+  <rect x="47" y="78" width="40" height="9" fill="#7f1d1d"/><rect x="55" y="46" width="8" height="38" fill="#fbbf24"/><rect x="45" y="39" width="34" height="12" fill="#fecaca"/><rect x="41" y="43" width="42" height="8" fill="#fb923c"/><rect x="70" y="62" width="18" height="18" fill="#fbbf24"/><rect x="74" y="66" width="10" height="10" fill="#201513"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#fb923c"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#fecaca">IMPLEMENTER</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#fb923c">SHIPS THE FIX</text>
+  </g><g transform="translate(384 0)">
+    <rect width="128" height="160" rx="0" fill="#201513"/>
+    <rect x="4" y="4" width="120" height="152" fill="#3a211c"/>
+    <rect x="8" y="8" width="112" height="144" fill="#201513"/>
+    <rect x="12" y="12" width="104" height="108" fill="#3a211c"/>
+    <g transform="translate(0 -2)">
+    <rect x="28" y="30" width="72" height="72" fill="#7f1d1d"/>
+    <rect x="32" y="34" width="64" height="64" fill="#201513"/>
+    <rect x="36" y="38" width="56" height="56" fill="#3a211c"/>
+  <rect x="47" y="78" width="40" height="9" fill="#7f1d1d"/><rect x="55" y="46" width="8" height="38" fill="#fbbf24"/><rect x="45" y="39" width="34" height="12" fill="#fecaca"/><rect x="41" y="43" width="42" height="8" fill="#fb923c"/><rect x="70" y="62" width="18" height="18" fill="#fed7aa"/><rect x="74" y="66" width="10" height="10" fill="#201513"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#fb923c"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#fecaca">IMPLEMENTER</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#fb923c">SHIPS THE FIX</text>
+  </g></svg>

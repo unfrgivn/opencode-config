@@ -1,0 +1,62 @@
+# This workflow is the sole trusted publisher configured on npmjs.org for OIDC
+# auth. It must always run as the top-level workflow (workflow_dispatch only,
+# not workflow_call) so the OIDC token's workflow_ref claim matches the
+# filename registered with npm's trusted publisher config.
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to publish from (tag or commit)
+        required: true
+        type: string
+      npm-tag:
+        description: npm distribution tag to publish under
+        required: true
+        default: latest
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Show runtime versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Test
+        run: bun test
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Verify release artifact
+        run: bun run verify:release
+
+      - name: Publish to npm
+        run: npm publish --access public --tag "${{ inputs.npm-tag }}"
+        env:
+          NODE_AUTH_TOKEN: ""

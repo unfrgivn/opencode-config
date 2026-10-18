@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 160" width="512" height="160" shape-rendering="crispEdges"><g transform="translate(0 0)">
+    <rect width="128" height="160" rx="0" fill="#141827"/>
+    <rect x="4" y="4" width="120" height="152" fill="#202742"/>
+    <rect x="8" y="8" width="112" height="144" fill="#141827"/>
+    <rect x="12" y="12" width="104" height="108" fill="#202742"/>
+    <g transform="translate(0 0)">
+    <rect x="28" y="30" width="72" height="72" fill="#312e81"/>
+    <rect x="32" y="34" width="64" height="64" fill="#141827"/>
+    <rect x="36" y="38" width="56" height="56" fill="#202742"/>
+  <rect x="61" y="45" width="6" height="36" fill="#c4b5fd"/><rect x="44" y="52" width="10" height="10" fill="#f59e0b"/><rect x="74" y="52" width="10" height="10" fill="#f59e0b"/><rect x="59" y="82" width="10" height="10" fill="#fde68a"/><rect x="54" y="56" width="20" height="4" fill="#f5a3d9"/><rect x="64" y="62" width="14" height="4" fill="#f5a3d9"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#f5a3d9"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#c4b5fd">ORCHESTRATOR</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#f5a3d9">ROUTES THE PARTY</text>
+  </g><g transform="translate(128 0)">
+    <rect width="128" height="160" rx="0" fill="#141827"/>
+    <rect x="4" y="4" width="120" height="152" fill="#202742"/>
+    <rect x="8" y="8" width="112" height="144" fill="#141827"/>
+    <rect x="12" y="12" width="104" height="108" fill="#202742"/>
+    <g transform="translate(0 -2)">
+    <rect x="28" y="30" width="72" height="72" fill="#312e81"/>
+    <rect x="32" y="34" width="64" height="64" fill="#141827"/>
+    <rect x="36" y="38" width="56" height="56" fill="#202742"/>
+  <rect x="61" y="45" width="6" height="36" fill="#c4b5fd"/><rect x="44" y="52" width="10" height="10" fill="#fde68a"/><rect x="74" y="52" width="10" height="10" fill="#f59e0b"/><rect x="59" y="82" width="10" height="10" fill="#fde68a"/><rect x="54" y="56" width="20" height="4" fill="#f5a3d9"/><rect x="64" y="62" width="14" height="4" fill="#f5a3d9"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#f5a3d9"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#c4b5fd">ORCHESTRATOR</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#f5a3d9">ROUTES THE PARTY</text>
+  </g><g transform="translate(256 0)">
+    <rect width="128" height="160" rx="0" fill="#141827"/>
+    <rect x="4" y="4" width="120" height="152" fill="#202742"/>
+    <rect x="8" y="8" width="112" height="144" fill="#141827"/>
+    <rect x="12" y="12" width="104" height="108" fill="#202742"/>
+    <g transform="translate(0 0)">
+    <rect x="28" y="30" width="72" height="72" fill="#312e81"/>
+    <rect x="32" y="34" width="64" height="64" fill="#141827"/>
+    <rect x="36" y="38" width="56" height="56" fill="#202742"/>
+  <rect x="61" y="45" width="6" height="36" fill="#c4b5fd"/><rect x="44" y="52" width="10" height="10" fill="#f59e0b"/><rect x="74" y="52" width="10" height="10" fill="#f59e0b"/><rect x="59" y="82" width="10" height="10" fill="#fde68a"/><rect x="54" y="56" width="20" height="4" fill="#f5a3d9"/><rect x="64" y="62" width="14" height="4" fill="#f5a3d9"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#f5a3d9"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#c4b5fd">ORCHESTRATOR</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#f5a3d9">ROUTES THE PARTY</text>
+  </g><g transform="translate(384 0)">
+    <rect width="128" height="160" rx="0" fill="#141827"/>
+    <rect x="4" y="4" width="120" height="152" fill="#202742"/>
+    <rect x="8" y="8" width="112" height="144" fill="#141827"/>
+    <rect x="12" y="12" width="104" height="108" fill="#202742"/>
+    <g transform="translate(0 -2)">
+    <rect x="28" y="30" width="72" height="72" fill="#312e81"/>
+    <rect x="32" y="34" width="64" height="64" fill="#141827"/>
+    <rect x="36" y="38" width="56" height="56" fill="#202742"/>
+  <rect x="61" y="45" width="6" height="36" fill="#c4b5fd"/><rect x="44" y="52" width="10" height="10" fill="#fde68a"/><rect x="74" y="52" width="10" height="10" fill="#f59e0b"/><rect x="59" y="82" width="10" height="10" fill="#fde68a"/><rect x="54" y="56" width="20" height="4" fill="#f5a3d9"/><rect x="64" y="62" width="14" height="4" fill="#f5a3d9"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#f5a3d9"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#c4b5fd">ORCHESTRATOR</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#f5a3d9">ROUTES THE PARTY</text>
+  </g></svg>

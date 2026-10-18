@@ -1,0 +1,7 @@
+{
+  "$schema": "./manifest.schema.json",
+  "instructions": [
+    "instruction/getting-started.md",
+    "instruction/orchestration-runtime.md"
+  ]
+}

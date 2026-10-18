@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 160" width="512" height="160" shape-rendering="crispEdges"><g transform="translate(0 0)">
+    <rect width="128" height="160" rx="0" fill="#0f172a"/>
+    <rect x="4" y="4" width="120" height="152" fill="#1e293b"/>
+    <rect x="8" y="8" width="112" height="144" fill="#0f172a"/>
+    <rect x="12" y="12" width="104" height="108" fill="#1e293b"/>
+    <g transform="translate(0 0)">
+    <rect x="28" y="30" width="72" height="72" fill="#164e63"/>
+    <rect x="32" y="34" width="64" height="64" fill="#0f172a"/>
+    <rect x="36" y="38" width="56" height="56" fill="#1e293b"/>
+  <rect x="42" y="49" width="44" height="34" fill="#164e63"/><rect x="47" y="54" width="34" height="4" fill="#ecfeff"/><rect x="47" y="66" width="26" height="4" fill="#a3e635"/><rect x="47" y="78" width="31" height="4" fill="#cffafe"/><rect x="87" y="42" width="9" height="52" fill="#a3e635"/><rect x="90" y="45" width="3" height="46" fill="#0f172a"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#67e8f9"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#cffafe">ARCHITECT</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#67e8f9">DRAWS THE BONES</text>
+  </g><g transform="translate(128 0)">
+    <rect width="128" height="160" rx="0" fill="#0f172a"/>
+    <rect x="4" y="4" width="120" height="152" fill="#1e293b"/>
+    <rect x="8" y="8" width="112" height="144" fill="#0f172a"/>
+    <rect x="12" y="12" width="104" height="108" fill="#1e293b"/>
+    <g transform="translate(0 -2)">
+    <rect x="28" y="30" width="72" height="72" fill="#164e63"/>
+    <rect x="32" y="34" width="64" height="64" fill="#0f172a"/>
+    <rect x="36" y="38" width="56" height="56" fill="#1e293b"/>
+  <rect x="42" y="49" width="44" height="34" fill="#164e63"/><rect x="47" y="54" width="34" height="4" fill="#ecfeff"/><rect x="47" y="66" width="26" height="4" fill="#a3e635"/><rect x="47" y="78" width="31" height="4" fill="#cffafe"/><rect x="87" y="42" width="9" height="52" fill="#ecfeff"/><rect x="90" y="45" width="3" height="46" fill="#0f172a"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#67e8f9"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#cffafe">ARCHITECT</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#67e8f9">DRAWS THE BONES</text>
+  </g><g transform="translate(256 0)">
+    <rect width="128" height="160" rx="0" fill="#0f172a"/>
+    <rect x="4" y="4" width="120" height="152" fill="#1e293b"/>
+    <rect x="8" y="8" width="112" height="144" fill="#0f172a"/>
+    <rect x="12" y="12" width="104" height="108" fill="#1e293b"/>
+    <g transform="translate(0 0)">
+    <rect x="28" y="30" width="72" height="72" fill="#164e63"/>
+    <rect x="32" y="34" width="64" height="64" fill="#0f172a"/>
+    <rect x="36" y="38" width="56" height="56" fill="#1e293b"/>
+  <rect x="42" y="49" width="44" height="34" fill="#164e63"/><rect x="47" y="54" width="34" height="4" fill="#ecfeff"/><rect x="47" y="66" width="26" height="4" fill="#a3e635"/><rect x="47" y="78" width="31" height="4" fill="#cffafe"/><rect x="87" y="42" width="9" height="52" fill="#a3e635"/><rect x="90" y="45" width="3" height="46" fill="#0f172a"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#67e8f9"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#cffafe">ARCHITECT</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#67e8f9">DRAWS THE BONES</text>
+  </g><g transform="translate(384 0)">
+    <rect width="128" height="160" rx="0" fill="#0f172a"/>
+    <rect x="4" y="4" width="120" height="152" fill="#1e293b"/>
+    <rect x="8" y="8" width="112" height="144" fill="#0f172a"/>
+    <rect x="12" y="12" width="104" height="108" fill="#1e293b"/>
+    <g transform="translate(0 -2)">
+    <rect x="28" y="30" width="72" height="72" fill="#164e63"/>
+    <rect x="32" y="34" width="64" height="64" fill="#0f172a"/>
+    <rect x="36" y="38" width="56" height="56" fill="#1e293b"/>
+  <rect x="42" y="49" width="44" height="34" fill="#164e63"/><rect x="47" y="54" width="34" height="4" fill="#ecfeff"/><rect x="47" y="66" width="26" height="4" fill="#a3e635"/><rect x="47" y="78" width="31" height="4" fill="#cffafe"/><rect x="87" y="42" width="9" height="52" fill="#ecfeff"/><rect x="90" y="45" width="3" height="46" fill="#0f172a"/></g>
+    <rect x="8" y="122" width="112" height="30" fill="#050816"/>
+    <rect x="8" y="122" width="112" height="2" fill="#67e8f9"/>
+    <text x="64" y="138" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="11" font-weight="700" fill="#cffafe">ARCHITECT</text>
+    <text x="64" y="149" text-anchor="middle" font-family="Monaco, 'Courier New', monospace" font-size="5" letter-spacing="0.8" fill="#67e8f9">DRAWS THE BONES</text>
+  </g></svg>

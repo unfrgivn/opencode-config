@@ -1,0 +1,75 @@
+{
+  "name": "@unfrgivn/opencode-config",
+  "version": "2.0.0",
+  "description": "OpenCode plugin that bundles orchestration agents, skills, commands, instructions, and MCP configs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unfrgivn/opencode-config.git"
+  },
+  "homepage": "https://github.com/unfrgivn/opencode-config#readme",
+  "bugs": {
+    "url": "https://github.com/unfrgivn/opencode-config/issues"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./tui": {
+      "types": "./dist/tui.d.ts",
+      "import": "./dist/tui.js"
+    },
+    "./fellowship.schema.json": "./fellowship.schema.json"
+  },
+  "files": [
+    "dist",
+    "skill",
+    "agent",
+    "command",
+    "companion",
+    "mcp",
+    "instruction",
+    "manifest.json",
+    "fellowship.schema.json"
+  ],
+  "scripts": {
+    "clean": "bun -e \"import { rmSync } from 'node:fs'; rmSync('dist', { recursive: true, force: true })\"",
+    "build:js": "bun build src/index.ts src/tui.ts --outdir dist --target node --external @opencode-ai/plugin --external @opencode-ai/plugin/promise/plugin --external @opencode-ai/plugin/promise/registration --external @opencode-ai/plugin/tui --external @opentui/solid --external gray-matter --external jsonc-parser --external zod",
+    "build:types": "tsc --emitDeclarationOnly --noEmit false --declarationMap false",
+    "build": "bun run clean && bun run build:js && bun run build:types",
+    "dev": "bun run build:js --watch",
+    "jira:ticket": "node skill/write-ticket/scripts/build-jira-ticket.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "verify:release": "bun scripts/verify-release-artifact.ts",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "plugin",
+    "agents",
+    "orchestration",
+    "skills",
+    "fellowship"
+  ],
+  "author": "unfrgivn",
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "0.0.0-beta-17639",
+    "@opentui/core": "0.5.4",
+    "@opentui/solid": "0.5.4",
+    "gray-matter": "^4.0.3",
+    "jsonc-parser": "^3.3.1",
+    "solid-js": "1.9.10",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.14",
+    "ajv": "^8.17.1",
+    "typescript": "^5.7.2"
+  }
+}
