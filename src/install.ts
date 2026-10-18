@@ -1,11 +1,11 @@
 import * as path from "path"
 import * as fs from "fs"
 import * as crypto from "crypto"
-import { execFile } from "node:child_process"
 import type { SkillInfo, DiscoveryResult } from "./assets"
 import { syncDirectory } from "./copy"
 import { logDebug, logError, logWarn } from "./logging"
 import { opencodeConfigDir } from "./paths"
+import { getMcpPluginsRootDir } from "./mcp-install"
 
 /** How to install skills: symlink or copy */
 export type InstallMethod = "link" | "copy"
@@ -69,6 +69,33 @@ export interface SkillCopyState {
 }
 
 const SKILL_METADATA_FILENAME = ".fellowship-skill-install.json"
+const GENERATED_INSTALLS_GITIGNORE = "# Created by @unfrgivn/opencode-config. Everything in this folder is generated.\n*\n"
+
+/** Ensure generated skill and MCP installs are ignored in their own directories. */
+export function ignoreGeneratedInstallDirs(): string[] {
+  const installDirs = [PLUGINS_DIR, getMcpPluginsRootDir()]
+  const writtenFiles: string[] = []
+
+  for (const installDir of installDirs) {
+    fs.mkdirSync(installDir, { recursive: true })
+    const ignoreFile = path.join(installDir, ".gitignore")
+    let currentContent: string | null = null
+    try {
+      currentContent = fs.readFileSync(ignoreFile, "utf-8")
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
+        throw error
+      }
+    }
+
+    if (currentContent !== GENERATED_INSTALLS_GITIGNORE) {
+      fs.writeFileSync(ignoreFile, GENERATED_INSTALLS_GITIGNORE)
+      writtenFiles.push(ignoreFile)
+    }
+  }
+
+  return writtenFiles
+}
 
 /**
  * Get the path where a skill should be installed
@@ -552,89 +579,6 @@ export function getSkillBasePath(): string {
  */
 export function getPluginsPath(): string {
   return PLUGINS_DIR
-}
-
-/**
- * Find the git root for a given path
- * 
- * @param startPath The path to start searching from
- * @returns The git root path, or null if not in a git repo
- */
-export async function findGitRoot(startPath: string): Promise<string | null> {
-  try {
-    const stdout = await new Promise<string>((resolve, reject) => {
-      execFile("git", ["-C", startPath, "rev-parse", "--show-toplevel"], (error, stdout) => {
-        if (error) {
-          reject(error)
-          return
-        }
-        resolve(stdout)
-      })
-    })
-    return stdout.trim()
-  } catch {
-    // Not in a git repo
-  }
-  return null
-}
-
-/**
- * Ensure _plugins/ is in .gitignore at the git root
- * 
- * This prevents accidentally committing imported skills to version control.
- * Only modifies .gitignore if the skill directory is inside a git repository.
- * 
- * @returns Object indicating whether .gitignore was modified
- */
-export async function ensureGitignore(): Promise<{ modified: boolean; gitRoot: string | null }> {
-  const gitRoot = await findGitRoot(SKILL_BASE)
-  
-  if (!gitRoot) {
-    // Not in a git repo, nothing to do
-    return { modified: false, gitRoot: null }
-  }
-  
-  const gitignorePath = path.join(gitRoot, ".gitignore")
-  const pluginsEntry = "_plugins/"
-  
-  // Calculate relative path from git root to _plugins
-  const relativePath = path.relative(gitRoot, PLUGINS_DIR)
-  const gitignoreEntry = relativePath ? `${relativePath}/` : pluginsEntry
-  
-  let content = ""
-  let exists = false
-  
-  try {
-    content = fs.readFileSync(gitignorePath, "utf-8")
-    exists = true
-  } catch {
-    // .gitignore doesn't exist
-  }
-  
-  // Check if already in .gitignore
-  const lines = content.split("\n")
-  const alreadyIgnored = lines.some(line => {
-    const trimmed = line.trim()
-    return trimmed === gitignoreEntry || 
-           trimmed === pluginsEntry ||
-           trimmed === "_plugins" ||
-           trimmed === relativePath
-  })
-  
-  if (alreadyIgnored) {
-    return { modified: false, gitRoot }
-  }
-  
-  // Add to .gitignore
-  const newContent = exists
-    ? content.endsWith("\n")
-      ? `${content}# OpenCode remote skills plugin\n${gitignoreEntry}\n`
-      : `${content}\n\n# OpenCode remote skills plugin\n${gitignoreEntry}\n`
-    : `# OpenCode remote skills plugin\n${gitignoreEntry}\n`
-  
-  fs.writeFileSync(gitignorePath, newContent)
-  
-  return { modified: true, gitRoot }
 }
 
 /**

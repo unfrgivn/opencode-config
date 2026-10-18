@@ -6,10 +6,15 @@ import type { InstallMethod } from "./install"
 
 export const DEFAULT_MCP_DIR = path.join(opencodeConfigDir(), "mcp")
 
-export const MCP_PLUGINS_SUBDIR = "_plugins/fellowship"
+export const MCP_PLUGINS_ROOT_SUBDIR = "_plugins"
+export const MCP_PLUGINS_SUBDIR = path.join(MCP_PLUGINS_ROOT_SUBDIR, "fellowship")
+
+export function getMcpPluginsRootDir(mcpDir: string = DEFAULT_MCP_DIR): string {
+  return path.join(mcpDir, MCP_PLUGINS_ROOT_SUBDIR)
+}
 
 function getMcpPluginsSubdirForRepo(repoShortName: string): string {
-  return path.join("_plugins", repoShortName)
+  return path.join(MCP_PLUGINS_ROOT_SUBDIR, repoShortName)
 }
 
 function resolveMcpSourcePath(mcp: McpInfo): string {

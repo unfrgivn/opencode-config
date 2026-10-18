@@ -9,7 +9,7 @@ import {
   createInstallsForRepo,
   cleanupStaleInstalls,
   hasLocalConflict,
-  ensureGitignore,
+  ignoreGeneratedInstallDirs,
   ensurePluginsDir,
   getExistingInstallsForRepo,
   materializeSchema,
@@ -754,10 +754,13 @@ async function setupFellowshipConfigPlugin(ctx: Parameters<V2Plugin["setup"]>[0]
   // Ensure the _plugins directory exists
   ensurePluginsDir()
 
-  // Ensure .gitignore is set up
-  const gitignoreResult = await ensureGitignore()
-  if (gitignoreResult.modified) {
-    log(`Added _plugins/ to .gitignore at ${gitignoreResult.gitRoot}`)
+  try {
+    const writtenIgnoreFiles = ignoreGeneratedInstallDirs()
+    for (const ignoreFile of writtenIgnoreFiles) {
+      logDebug(`Created generated-install ignore file at ${ignoreFile}`)
+    }
+  } catch (error) {
+    logWarn(`Generated-install ignore setup failed: ${error instanceof Error ? error.message : String(error)}`)
   }
 
   // Materialize JSON schema for IDE autocompletion
