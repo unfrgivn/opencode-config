@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.2](https://github.com/unfrgivn/opencode-config/compare/v3.0.1...v3.0.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* load on OpenCode 2 by depending on @opencode/plugin ([daa5471](https://github.com/unfrgivn/opencode-config/commit/daa547190402b05bc187cead8f20899c8645eb05))
+
 ## [3.0.1](https://github.com/unfrgivn/opencode-config/compare/v3.0.0...v3.0.1) (2026-10-18)
 
 
