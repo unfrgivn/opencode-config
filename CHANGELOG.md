@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.4](https://github.com/unfrgivn/opencode-config/compare/v3.0.3...v3.0.4) (2026-10-18)
+
+
+### Bug Fixes
+
+* **vision:** run analysis on the analyst model and nest it under the caller ([40b0966](https://github.com/unfrgivn/opencode-config/commit/40b09663b963c5d508a53e13937655dfbe2a4522))
+
 ## [3.0.3](https://github.com/unfrgivn/opencode-config/compare/v3.0.2...v3.0.3) (2026-10-18)
 
 
