@@ -1,10 +1,10 @@
 import { appendFileSync, mkdirSync } from "fs"
 import { join } from "path"
-import { homedir } from "os"
 import { STORAGE_DIR_NAME } from "./constants"
+import { opencodeCacheDir } from "./paths"
 
 /** Default directory for log files */
-export const DEFAULT_LOG_DIR = join(homedir(), ".cache", "opencode", STORAGE_DIR_NAME)
+export const DEFAULT_LOG_DIR = join(opencodeCacheDir(), STORAGE_DIR_NAME)
 
 /** Current log directory (can be overridden for testing) */
 let currentLogDir = DEFAULT_LOG_DIR

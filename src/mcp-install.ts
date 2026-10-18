@@ -1,10 +1,10 @@
 import * as fs from "fs"
 import * as path from "path"
-import { homedir } from "os"
+import { opencodeConfigDir } from "./paths"
 import type { McpInfo } from "./assets"
 import type { InstallMethod } from "./install"
 
-export const DEFAULT_MCP_DIR = path.join(homedir(), ".config", "opencode", "mcp")
+export const DEFAULT_MCP_DIR = path.join(opencodeConfigDir(), "mcp")
 
 export const MCP_PLUGINS_SUBDIR = "_plugins/fellowship"
 

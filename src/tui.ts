@@ -4,6 +4,7 @@ import type { JSX } from "@opentui/solid"
 import { createElement, insert, setProp } from "@opentui/solid"
 import { formatCompactCount, getSidebarAgentNames, hasSidebarWarning, splitModelId } from "./tui-model"
 import { readTuiSnapshot, readTuiSnapshotAsync, type TuiSnapshot } from "./tui-state"
+import { homeDir } from "./paths"
 
 const PLUGIN_LABEL = "Fellowship"
 const PLUGIN_ID = "@unfrgivn/opencode-config:tui"
@@ -38,7 +39,7 @@ function text(props: JSX.IntrinsicElements["text"], children: Child[]): JSX.Elem
 }
 
 function shortPath(configPath: string): string {
-  const home = process.env.HOME
+  const home = homeDir()
   if (home && configPath.startsWith(home)) return `~${configPath.slice(home.length)}`
   return configPath
 }

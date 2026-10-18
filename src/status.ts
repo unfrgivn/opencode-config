@@ -6,16 +6,12 @@
 
 import * as fs from "fs"
 import * as path from "path"
-import { REPO_SHORT_NAME, STORAGE_DIR_NAME } from "./constants"
+import { REPO_SHORT_NAME } from "./constants"
 import { logDebug } from "./logging"
 import { moduleDir } from "./module-path"
+import { fellowshipCacheDir } from "./paths"
 
-const STATUS_BASE = path.join(
-  process.env.HOME || "~",
-  ".cache",
-  "opencode",
-  STORAGE_DIR_NAME
-)
+const STATUS_BASE = fellowshipCacheDir()
 
 /**
  * Plugin status data persisted between runs

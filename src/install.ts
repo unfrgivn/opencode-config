@@ -5,16 +5,13 @@ import { execFile } from "node:child_process"
 import type { SkillInfo, DiscoveryResult } from "./assets"
 import { syncDirectory } from "./copy"
 import { logDebug, logError, logWarn } from "./logging"
+import { opencodeConfigDir } from "./paths"
 
 /** How to install skills: symlink or copy */
 export type InstallMethod = "link" | "copy"
 
 /** Base directory for OpenCode config */
-const CONFIG_BASE = path.join(
-  process.env.HOME || "~",
-  ".config",
-  "opencode"
-)
+const CONFIG_BASE = opencodeConfigDir()
 
 /** Base directory for OpenCode skills */
 const SKILL_BASE = path.join(CONFIG_BASE, "skill")

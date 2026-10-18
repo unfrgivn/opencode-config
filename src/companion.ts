@@ -7,6 +7,7 @@ import type { UserConfig } from "./config"
 import { logDebug, logWarn } from "./logging"
 import { moduleDir } from "./module-path"
 import { STORAGE_DIR_NAME } from "./constants"
+import { dataHomeDir } from "./paths"
 
 export type CompanionConfig = UserConfig["companion"]
 
@@ -59,9 +60,7 @@ const COMPANION_ART_FRAME_WIDTH = 128
 const COMPANION_ART_FRAME_HEIGHT = 160
 
 function getStorageDir(): string {
-  const xdg = process.env.XDG_DATA_HOME?.trim()
-  const base = xdg && path.isAbsolute(xdg) ? xdg : path.join(os.homedir(), ".local", "share")
-  return path.join(base, "opencode", "storage", STORAGE_DIR_NAME)
+  return path.join(dataHomeDir(), "opencode", "storage", STORAGE_DIR_NAME)
 }
 
 export function getCompanionStatePath(): string {

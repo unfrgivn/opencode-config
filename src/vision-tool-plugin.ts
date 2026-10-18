@@ -10,7 +10,8 @@
 import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
+import { opencodeConfigDir } from "./paths";
 import { Plugin } from "@opencode-ai/plugin";
 
 export function parseJsonOrJsonc(text: string): unknown {
@@ -87,8 +88,8 @@ function resolveVisionAgentName(): string {
   const configPaths = [
     join(process.cwd(), ".opencode", "fellowship.json"),
     join(process.cwd(), ".opencode", "fellowship.jsonc"),
-    join(homedir(), ".config", "opencode", "fellowship.json"),
-    join(homedir(), ".config", "opencode", "fellowship.jsonc"),
+    join(opencodeConfigDir(), "fellowship.json"),
+    join(opencodeConfigDir(), "fellowship.jsonc"),
   ];
 
   for (const configPath of configPaths) {

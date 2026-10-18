@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "crypto"
 import * as fs from "fs"
-import * as os from "os"
 import * as path from "path"
 import { REPO_SHORT_NAME, STORAGE_DIR_NAME } from "./constants"
+import { dataHomeDir } from "./paths"
 
 export interface TuiSnapshot {
   version: 1
@@ -53,7 +53,7 @@ export interface TuiSnapshotInput {
 }
 
 function dataDir(): string {
-  return process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share")
+  return dataHomeDir()
 }
 
 function projectScope(projectDir: string): string {

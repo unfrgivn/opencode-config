@@ -7,6 +7,7 @@ import { log, logError, logWarn } from "./logging"
 import { AgentConfigSchema, type AgentConfig } from "./agent"
 import { deepMerge } from "./deep-merge"
 import { readPresetSelection } from "./preset-state"
+import { opencodeConfigDir } from "./paths"
 
 const AgentOverridesSchema = z.record(z.string(), AgentConfigSchema)
 
@@ -250,8 +251,7 @@ export type AgentOverrides = Record<string, AgentConfig>
 
 export function getConfigPaths(projectRoot: string = process.cwd()): string[] {
   const projectDir = join(projectRoot, ".opencode")
-  const home = process.env.HOME || process.env.USERPROFILE || "~"
-  const userDir = join(home, ".config", "opencode")
+  const userDir = opencodeConfigDir()
   return [
     ...CONFIG_FILENAMES.map((filename) => join(projectDir, filename)),
     ...CONFIG_FILENAMES.map((filename) => join(userDir, filename)),
@@ -259,9 +259,8 @@ export function getConfigPaths(projectRoot: string = process.cwd()): string[] {
 }
 
 function getConfigScopeDirs(projectRoot: string): string[] {
-  const home = process.env.HOME || process.env.USERPROFILE || "~"
   return [
-    join(home, ".config", "opencode"),
+    opencodeConfigDir(),
     join(projectRoot, ".opencode"),
   ]
 }

@@ -1,12 +1,12 @@
 import * as fs from "fs"
 import * as path from "path"
-import { homedir } from "os"
 import type { PluginInfo } from "./plugin-info"
 import type { InstallMethod } from "./install"
+import { opencodeConfigDir } from "./paths"
 
 /** Default directory where OpenCode looks for plugins */
-const PLUGIN_DIR_PLURAL = path.join(homedir(), ".config", "opencode", "plugins")
-const PLUGIN_DIR_SINGULAR = path.join(homedir(), ".config", "opencode", "plugin")
+const PLUGIN_DIR_PLURAL = path.join(opencodeConfigDir(), "plugins")
+const PLUGIN_DIR_SINGULAR = path.join(opencodeConfigDir(), "plugin")
 
 /** Prefix for remote plugin symlinks */
 const REMOTE_PREFIX = "_remote_"

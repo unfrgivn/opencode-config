@@ -107,6 +107,7 @@ EOF
 - **Unit + E2E only**: No mock tests that invent fake behaviors
 - **Run only changed tests**: Use `bun test <file>` during development
 - **Full suite before commit**: Run `bun test` to verify all pass
+- **Sandboxed home**: `bun test` preloads `src/test-preload.ts` (via `bunfig.toml`), which points `HOME` and `XDG_*` at a temp dir. Resolve home, config, cache, and data paths through `src/paths.ts`, never `os.homedir()` directly: Bun's `os.homedir()` ignores the sandbox, so tests would write into the developer's real OpenCode directories.
 
 ## Session Completion
 

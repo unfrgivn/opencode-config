@@ -1,7 +1,7 @@
 import * as fs from "fs"
-import * as os from "os"
 import * as path from "path"
-import { REPO_SHORT_NAME, STORAGE_DIR_NAME } from "./constants"
+import { REPO_SHORT_NAME } from "./constants"
+import { fellowshipCacheDir } from "./paths"
 
 export interface PresetSelectionState {
   version: 1
@@ -10,8 +10,7 @@ export interface PresetSelectionState {
 }
 
 function cacheDir(): string {
-  const home = process.env.HOME && process.env.HOME.trim().length > 0 ? process.env.HOME : os.homedir()
-  return path.join(home, ".cache", "opencode", STORAGE_DIR_NAME)
+  return fellowshipCacheDir()
 }
 
 export function getPresetSelectionPath(): string {

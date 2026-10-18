@@ -2,12 +2,12 @@ import { Plugin } from "@opencode-ai/plugin"
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { join } from "node:path"
-import { homedir } from "node:os"
 import { setTimeout as delay } from "node:timers/promises"
 import { logWarn } from "./logging"
 import { getConfigPaths, loadConfigWithLocation } from "./config"
 import { moduleDir } from "./module-path"
 import { STORAGE_DIR_NAME } from "./constants"
+import { homeDir, fellowshipCacheDir } from "./paths"
 
 type ProviderMode = "copilot" | "native"
 type TaskStatus = "queued" | "running" | "retrying" | "completed" | "failed" | "stopped" | "interrupted"
@@ -128,9 +128,9 @@ interface SharedProviderState {
   providers: Record<ProviderMode, ProviderCapacityState>
 }
 
-const USER_HOME = process.env.HOME && process.env.HOME.trim().length > 0 ? process.env.HOME : homedir()
-const TASK_STORAGE_DIR = join(USER_HOME, ".cache", "opencode", STORAGE_DIR_NAME, "orchestration-tasks")
-const ORCHESTRATION_CACHE_DIR = join(USER_HOME, ".cache", "opencode", STORAGE_DIR_NAME)
+const USER_HOME = homeDir()
+const TASK_STORAGE_DIR = join(fellowshipCacheDir(), "orchestration-tasks")
+const ORCHESTRATION_CACHE_DIR = fellowshipCacheDir()
 const ADMISSION_LOCK_DIR = join(ORCHESTRATION_CACHE_DIR, "orchestration-admission.lock")
 const PROVIDER_STATE_FILE = join(ORCHESTRATION_CACHE_DIR, "orchestration-provider-state.json")
 const INSTANCE_ID = `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -141,6 +141,14 @@ const OWNER_LEASE_TTL_MS = 30_000
 const OWNER_LEASE_HEARTBEAT_MS = 10_000
 const TMUX_TIMEOUT_MS = 3_000
 const PACKAGE_ROOT = join(moduleDir(import.meta.url), "..")
+
+export function getOrchestrationTaskStorageDir(): string {
+  return TASK_STORAGE_DIR
+}
+
+export function getOrchestrationCacheDir(): string {
+  return ORCHESTRATION_CACHE_DIR
+}
 
 const DEFAULT_CONFIG: OrchestrationConfig = {
   providerMode: "copilot",
