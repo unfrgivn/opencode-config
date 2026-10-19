@@ -33,6 +33,7 @@ describe("companion", () => {
   })
 
   afterEach(() => {
+    stopTestCompanion()
     if (originalXdgDataHome === undefined) {
       delete process.env.XDG_DATA_HOME
     } else {
@@ -719,6 +720,19 @@ async function waitForFile(filePath: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   throw new Error(`Timed out waiting for ${filePath}`)
+}
+
+/** Each test has its own storage dir, so a PID in its PID file belongs to a companion that test started. */
+function stopTestCompanion(): void {
+  const pidPath = getCompanionPidPath()
+  if (!fs.existsSync(pidPath)) return
+  const pid = Number(fs.readFileSync(pidPath, "utf8").trim())
+  if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) return
+  try {
+    process.kill(pid, "SIGTERM")
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error
+  }
 }
 
 async function waitForExit(child: ChildProcess, timeoutMs: number): Promise<number | null> {
